@@ -1,12 +1,62 @@
-body {
-  font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
-  font-size: 30px;
-  margin: 0;
-  text-align: center;
-  color: #293c4b;
+:root {
+  --gray: #8E8E8E;
+  --black: #000000;
+  --border-green: #61C299;
+  --block-red: #E8646E;
 }
 
-img {
-  margin: 20px 0;
-  max-width: 200px;
+body {
+  margin: 0;
+  color: var(--gray);
+}
+
+.container {
+  width: 100%;
+}
+
+.game-header {
+  display: flex;
+  width: 100%;
+  background-color: var(--black);
+}
+
+.score {
+  width: 50%;
+  text-align: right;
+}
+
+.lives {
+  width: 25%;
+  text-align: center;
+}
+
+.player-number {
+  width: 25%;
+  text-align: center;
+}
+
+.game-container {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-top: 35px solid var(--gray);
+  border-right: 50px solid var(--gray);
+  border-left: 50px solid var(--gray);
+  background-color: var(--black);
+}
+
+.game-footer {
+  width: 100%;
+  height: 20px;
+  box-sizing: border-box;
+  border-right: 50px solid var(--block-red);
+  border-left: 50px solid var(--border-green);
+  background-color: var(--black);
+}
+
+@media (min-width: 1000px) {
+  .container {
+    width: 1000px;
+    margin: 0 auto;
+  }
 }
