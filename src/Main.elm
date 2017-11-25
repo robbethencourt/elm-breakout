@@ -18,6 +18,12 @@ type alias Model =
     , ballPosition : ( Float, Float )
     , ballVelocity : ( Float, Float )
     , paddlePosition : Int
+    , redBlocks : List Block
+    , orangeBlocks : List Block
+    , darkOrangeBlocks : List Block
+    , yellowBlocks : List Block
+    , greenBlocks : List Block
+    , blueBlocks : List Block
     }
 
 
@@ -34,9 +40,27 @@ type alias Player =
     }
 
 
+type alias Block =
+    { fillColor : String
+    , value : Int
+    , yPosition : Int
+    , xPosition : Int
+    }
+
+
 initialVelocity : Float
 initialVelocity =
     0.03
+
+
+createBlockList : String -> Int -> Int -> List Block
+createBlockList fillColor value yPosition =
+    List.map (Block fillColor value yPosition) (List.map (multiplyByFive) (List.range 0 19))
+
+
+multiplyByFive : Int -> Int
+multiplyByFive num =
+    num * 5
 
 
 init : ( Model, Cmd Msg )
@@ -46,6 +70,12 @@ init =
       , ballPosition = ( -5, -5 )
       , ballVelocity = ( initialVelocity, initialVelocity )
       , paddlePosition = 40
+      , redBlocks = createBlockList "#CB4744" 10 10
+      , orangeBlocks = createBlockList "#C76C3A" 8 12
+      , darkOrangeBlocks = createBlockList "#B47830" 6 14
+      , yellowBlocks = createBlockList "#9FA426" 4 16
+      , greenBlocks = createBlockList "#46A047" 2 18
+      , blueBlocks = createBlockList "#4546C9" 1 20
       }
     , Cmd.none
     )
@@ -79,7 +109,7 @@ update msg model =
                 Keyboard.Extra.Space ->
                     ( { model
                         | gameState = Playing
-                        , ballPosition = ( 60, 60 )
+                        , ballPosition = ( 30, 60 )
                       }
                     , Cmd.none
                     )
@@ -119,33 +149,33 @@ updateBallPosition dt model =
         ( ballVelocityX, ballVelocityY ) =
             model.ballVelocity
 
-        debugVelocityx =
-            Debug.log "ball position x" ballPositionX
+        allBlocks =
+            model.redBlocks ++ model.orangeBlocks ++ model.darkOrangeBlocks ++ model.yellowBlocks ++ model.greenBlocks ++ model.blueBlocks
 
-        debugVelocityY =
-            Debug.log "ball position y" ballPositionY
-
+        -- debugVelocityx =
+        --     Debug.log "ball position x" ballPositionX
+        --
+        -- debugVelocityY =
+        --     Debug.log "ball position y" ballPositionY
         roundedBallPositionX =
             floor ballPositionX
 
-        debugthree =
-            Debug.log "rounded x" roundedBallPositionX
-
-        debugpaddlepos =
-            Debug.log "paddle position" model.paddlePosition
-
+        -- debugthree =
+        --     Debug.log "rounded x" roundedBallPositionX
+        --
+        -- debugpaddlepos =
+        --     Debug.log "paddle position" model.paddlePosition
         roundedBallPositionY =
             floor ballPositionY
 
-        debugtwo =
-            Debug.log "rounded y" roundedBallPositionY
-
-        debugmore =
-            Debug.log "the bool" (List.member roundedBallPositionY (List.range model.paddlePosition (model.paddlePosition + 20)))
-
+        -- debugtwo =
+        --     Debug.log "rounded y" roundedBallPositionY
+        --
+        -- debugmore =
+        --     Debug.log "the bool" (List.member roundedBallPositionY (List.range model.paddlePosition (model.paddlePosition + 20)))
         ( newBallPositionX, newBallVelocityX ) =
             if roundedBallPositionY == 100 then
-                ( 60, initialVelocity )
+                ( 30, initialVelocity )
             else if ballPositionX > 99 then
                 ( 98, -1 * abs ballVelocityX )
             else if ballPositionX < 0 then
@@ -153,22 +183,27 @@ updateBallPosition dt model =
             else
                 ( ballPositionX, ballVelocityX )
 
-        ( newBallPositionY, newBallVelocityY ) =
+        ( newBallPositionY, newBallVelocityY, newListOfBlocks ) =
             case roundedBallPositionY of
                 100 ->
-                    ( 60, initialVelocity )
+                    ( 60, initialVelocity, model.blueBlocks )
 
                 88 ->
+                    -- need the paddle position so the ball can change it's tragectory
                     if List.member roundedBallPositionX (List.range model.paddlePosition (model.paddlePosition + 20)) then
-                        ( 87, -1 * abs ballVelocityY )
+                        ( 87, -1 * abs ballVelocityY, model.blueBlocks )
                     else
-                        ( ballPositionY, ballVelocityY )
+                        ( ballPositionY, ballVelocityY, model.blueBlocks )
+
+                21 ->
+                    -- write function that detects collision with any of the blue blocks
+                    ( 22, abs ballVelocityY, checkBlockCollision ballPositionX model.blueBlocks )
 
                 0 ->
-                    ( 0.5, abs ballVelocityY )
+                    ( 0.5, abs ballVelocityY, model.blueBlocks )
 
                 _ ->
-                    ( ballPositionY, ballVelocityY )
+                    ( ballPositionY, ballVelocityY, model.blueBlocks )
     in
         ( { model
             | ballPosition =
@@ -176,9 +211,19 @@ updateBallPosition dt model =
                 , newBallPositionY + newBallVelocityY * dt
                 )
             , ballVelocity = ( newBallVelocityX, newBallVelocityY )
+            , blueBlocks = newListOfBlocks
           }
         , Cmd.none
         )
+
+
+checkBlockCollision : Float -> List Block -> List Block
+checkBlockCollision ballX blocks =
+    let
+        debugthis =
+            Debug.log "ballX" ballX
+    in
+        List.filter (\block -> not (List.member (round ballX) (List.range block.xPosition (block.xPosition + 5)))) blocks
 
 
 
@@ -222,30 +267,30 @@ gameBoard model =
         , viewBox "0 0 100 90"
         , fill "#000000"
         ]
-        ((rowOfBlocks "#CB4744" "10")
-            ++ (rowOfBlocks "#C76C3A" "12")
-            ++ (rowOfBlocks "#B47830" "14")
-            ++ (rowOfBlocks "#9FA426" "16")
-            ++ (rowOfBlocks "#46A047" "18")
-            ++ (rowOfBlocks "#4546C9" "20")
+        ((rowOfSvgBlocks model.redBlocks)
+            ++ (rowOfSvgBlocks model.orangeBlocks)
+            ++ (rowOfSvgBlocks model.darkOrangeBlocks)
+            ++ (rowOfSvgBlocks model.yellowBlocks)
+            ++ (rowOfSvgBlocks model.greenBlocks)
+            ++ (rowOfSvgBlocks model.blueBlocks)
             ++ [ ball model.ballPosition ]
             ++ [ paddle model.paddlePosition ]
         )
 
 
-rowOfBlocks : String -> String -> List (Html Msg)
-rowOfBlocks fillColor columnPosition =
-    List.map (block fillColor columnPosition) (List.range 0 19)
+rowOfSvgBlocks : List Block -> List (Html Msg)
+rowOfSvgBlocks blocks =
+    List.map svgBlock blocks
 
 
-block : String -> String -> Int -> Html Msg
-block fillColor yPosition xPosition =
+svgBlock : Block -> Html Msg
+svgBlock { fillColor, value, yPosition, xPosition } =
     rect
         [ width "5%"
         , height "2"
         , fill fillColor
-        , x (toString (xPosition * 5) ++ "%")
-        , y yPosition
+        , y (toString yPosition)
+        , x ((toString xPosition) ++ "%")
         ]
         []
 
