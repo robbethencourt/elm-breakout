@@ -4,6 +4,9 @@ import Html exposing (Html, text, div, img)
 import Html.Attributes exposing (class)
 import Svg exposing (Svg, rect)
 import Svg.Attributes exposing (width, height, viewBox, fill, x, y)
+import AnimationFrame
+import Time exposing (Time)
+import Keyboard.Extra exposing (Key)
 
 
 ---- MODEL ----
@@ -12,6 +15,8 @@ import Svg.Attributes exposing (width, height, viewBox, fill, x, y)
 type alias Model =
     { gameState : GameState
     , playerStats : Player
+    , ballPosition : ( Float, Float )
+    , paddlePosition : Int
     }
 
 
@@ -32,6 +37,8 @@ init : ( Model, Cmd Msg )
 init =
     ( { gameState = NotPlaying
       , playerStats = Player 0 0 0
+      , ballPosition = ( -5, -5 )
+      , paddlePosition = 40
       }
     , Cmd.none
     )
@@ -42,12 +49,70 @@ init =
 
 
 type Msg
-    = NoOp
+    = TimeUpdate Time
+    | KeyboardUpdate Key
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        TimeUpdate dt ->
+            case model.gameState of
+                NotPlaying ->
+                    ( model, Cmd.none )
+
+                Playing ->
+                    let
+                        ( ballX, ballY ) =
+                            model.ballPosition
+
+                        debugthis =
+                            Debug.log "dt" dt
+                    in
+                        ( { model
+                            | ballPosition =
+                                ( ballX + 0.01 * dt, ballY + 0.01 * dt )
+                          }
+                        , Cmd.none
+                        )
+
+                GameOver ->
+                    ( { model | ballPosition = ( -5, -5 ) }, Cmd.none )
+
+        KeyboardUpdate keycode ->
+            case keycode of
+                Keyboard.Extra.Space ->
+                    ( { model
+                        | gameState = Playing
+                        , ballPosition = ( 60, 60 )
+                      }
+                    , Cmd.none
+                    )
+
+                Keyboard.Extra.ArrowLeft ->
+                    case model.gameState of
+                        Playing ->
+                            if model.paddlePosition > 0 then
+                                ( { model | paddlePosition = model.paddlePosition - 1 }, Cmd.none )
+                            else
+                                ( model, Cmd.none )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+                Keyboard.Extra.ArrowRight ->
+                    case model.gameState of
+                        Playing ->
+                            if model.paddlePosition < 80 then
+                                ( { model | paddlePosition = model.paddlePosition + 1 }, Cmd.none )
+                            else
+                                ( model, Cmd.none )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 
@@ -59,7 +124,7 @@ view model =
     div [ class "container" ]
         [ gameHeader model.playerStats
         , div [ class "game-container" ]
-            [ gameBoard ]
+            [ gameBoard model ]
           -- [ case model.gameState of
           --     NotPlaying ->
           --         text "not playing"
@@ -83,8 +148,8 @@ gameHeader { score, lives, playerNumber } =
         ]
 
 
-gameBoard : Html Msg
-gameBoard =
+gameBoard : Model -> Html Msg
+gameBoard model =
     Svg.svg
         [ width "100%"
         , height "100%"
@@ -97,8 +162,8 @@ gameBoard =
             ++ (rowOfBlocks "#9FA426" "16")
             ++ (rowOfBlocks "#46A047" "18")
             ++ (rowOfBlocks "#4546C9" "20")
-            ++ [ ball ]
-            ++ [ paddle ]
+            ++ [ ball model.ballPosition ]
+            ++ [ paddle model.paddlePosition ]
         )
 
 
@@ -119,25 +184,25 @@ block fillColor yPosition xPosition =
         []
 
 
-ball : Html Msg
-ball =
+ball : ( Float, Float ) -> Html Msg
+ball ( xPosition, yPosition ) =
     rect
         [ width "1.5"
         , height "1.5"
         , fill "#C64947"
-        , x "60"
-        , y "60"
+        , x (toString xPosition)
+        , y (toString yPosition)
         ]
         []
 
 
-paddle : Html Msg
-paddle =
+paddle : Int -> Html Msg
+paddle xPosition =
     rect
         [ width "20"
         , height "1.5"
         , fill "#C64947"
-        , x "40"
+        , x (toString xPosition)
         , y "88.5"
         ]
         []
@@ -147,11 +212,19 @@ paddle =
 ---- PROGRAM ----
 
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ AnimationFrame.diffs TimeUpdate
+        , Keyboard.Extra.downs KeyboardUpdate
+        ]
+
+
 main : Program Never Model Msg
 main =
     Html.program
         { view = view
         , init = init
         , update = update
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
