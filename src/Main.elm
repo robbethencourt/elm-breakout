@@ -16,6 +16,7 @@ type alias Model =
     { gameState : GameState
     , playerStats : Player
     , ballPosition : ( Float, Float )
+    , ballVelocity : ( Float, Float )
     , paddlePosition : Int
     }
 
@@ -38,6 +39,7 @@ init =
     ( { gameState = NotPlaying
       , playerStats = Player 0 0 0
       , ballPosition = ( -5, -5 )
+      , ballVelocity = ( 0.01, 0.01 )
       , paddlePosition = 40
       }
     , Cmd.none
@@ -62,19 +64,7 @@ update msg model =
                     ( model, Cmd.none )
 
                 Playing ->
-                    let
-                        ( ballX, ballY ) =
-                            model.ballPosition
-
-                        debugthis =
-                            Debug.log "dt" dt
-                    in
-                        ( { model
-                            | ballPosition =
-                                ( ballX + 0.01 * dt, ballY + 0.01 * dt )
-                          }
-                        , Cmd.none
-                        )
+                    updateBallPosition dt model
 
                 GameOver ->
                     ( { model | ballPosition = ( -5, -5 ) }, Cmd.none )
@@ -113,6 +103,75 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+
+updateBallPosition : Time -> Model -> ( Model, Cmd Msg )
+updateBallPosition dt model =
+    let
+        ( ballPositionX, ballPositionY ) =
+            model.ballPosition
+
+        ( ballVelocityX, ballVelocityY ) =
+            model.ballVelocity
+
+        debugVelocityx =
+            Debug.log "ball position x" ballPositionX
+
+        debugVelocityY =
+            Debug.log "ball position y" ballPositionY
+
+        roundedBallPositionX =
+            floor ballPositionX
+
+        debugthree =
+            Debug.log "rounded x" roundedBallPositionX
+
+        debugpaddlepos =
+            Debug.log "paddle position" model.paddlePosition
+
+        roundedBallPositionY =
+            floor ballPositionY
+
+        debugtwo =
+            Debug.log "rounded y" roundedBallPositionY
+
+        debugmore =
+            Debug.log "the bool" (model.paddlePosition >= roundedBallPositionX && model.paddlePosition <= (roundedBallPositionX + 20))
+
+        ( newBallPositionX, newBallVelocityX ) =
+            if roundedBallPositionY == 100 then
+                ( 60, 0.01 )
+                -- 98 ->
+                --     if model.paddlePosition >= roundedBallPositionX && model.paddlePosition <= roundedBallPositionX + 20 then
+                --         ( 97, -1 * abs ballVelocityX )
+                --     else
+                --         ( ballPositionX, ballVelocityX )
+            else
+                ( ballPositionX, ballVelocityX )
+
+        ( newBallPositionY, newBallVelocityY ) =
+            case roundedBallPositionY of
+                100 ->
+                    ( 60, 0.01 )
+
+                88 ->
+                    if List.member roundedBallPositionY (List.range model.paddlePosition (model.paddlePosition + 20)) then
+                        ( 87, -1 * abs ballVelocityY )
+                    else
+                        ( ballPositionY, ballVelocityY )
+
+                _ ->
+                    ( ballPositionY, ballVelocityY )
+    in
+        ( { model
+            | ballPosition =
+                ( newBallPositionX + newBallVelocityX * dt
+                , newBallPositionY + newBallVelocityY * dt
+                )
+            , ballVelocity = ( newBallVelocityX, newBallVelocityY )
+          }
+        , Cmd.none
+        )
 
 
 
