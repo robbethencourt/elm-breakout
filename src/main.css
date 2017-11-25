@@ -2,12 +2,13 @@
   --gray: #8E8E8E;
   --black: #000000;
   --border-green: #61C299;
-  --block-red: #E8646E;
+  --block-red: #C64947;
 }
 
 body {
   margin: 0;
   color: var(--gray);
+  background-color: var(--black);
 }
 
 .container {

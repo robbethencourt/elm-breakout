@@ -2,6 +2,8 @@ module Main exposing (..)
 
 import Html exposing (Html, text, div, img)
 import Html.Attributes exposing (class)
+import Svg exposing (Svg, rect)
+import Svg.Attributes exposing (width, height, viewBox, fill, x, y)
 
 
 ---- MODEL ----
@@ -57,16 +59,17 @@ view model =
     div [ class "container" ]
         [ gameHeader model.playerStats
         , div [ class "game-container" ]
-            [ case model.gameState of
-                NotPlaying ->
-                    text "not playing"
-
-                Playing ->
-                    text "playing"
-
-                GameOver ->
-                    text "game over"
-            ]
+            [ gameBoard ]
+          -- [ case model.gameState of
+          --     NotPlaying ->
+          --         text "not playing"
+          --
+          --     Playing ->
+          --         text "playing"
+          --
+          --     GameOver ->
+          --         text "game over"
+          -- ]
         , div [ class "game-footer" ] []
         ]
 
@@ -78,6 +81,66 @@ gameHeader { score, lives, playerNumber } =
         , div [ class "lives" ] [ text (toString lives) ]
         , div [ class "player-number" ] [ text (toString playerNumber) ]
         ]
+
+
+gameBoard : Html Msg
+gameBoard =
+    Svg.svg
+        [ width "100%"
+        , height "100%"
+        , viewBox "0 0 100 90"
+        , fill "#000000"
+        ]
+        ((rowOfBlocks "#CB4744" "10")
+            ++ (rowOfBlocks "#C76C3A" "12")
+            ++ (rowOfBlocks "#B47830" "14")
+            ++ (rowOfBlocks "#9FA426" "16")
+            ++ (rowOfBlocks "#46A047" "18")
+            ++ (rowOfBlocks "#4546C9" "20")
+            ++ [ ball ]
+            ++ [ paddle ]
+        )
+
+
+rowOfBlocks : String -> String -> List (Html Msg)
+rowOfBlocks fillColor columnPosition =
+    List.map (block fillColor columnPosition) (List.range 0 19)
+
+
+block : String -> String -> Int -> Html Msg
+block fillColor yPosition xPosition =
+    rect
+        [ width "5%"
+        , height "2"
+        , fill fillColor
+        , x (toString (xPosition * 5) ++ "%")
+        , y yPosition
+        ]
+        []
+
+
+ball : Html Msg
+ball =
+    rect
+        [ width "1.5"
+        , height "1.5"
+        , fill "#C64947"
+        , x "60"
+        , y "60"
+        ]
+        []
+
+
+paddle : Html Msg
+paddle =
+    rect
+        [ width "20"
+        , height "1.5"
+        , fill "#C64947"
+        , x "40"
+        , y "88.5"
+        ]
+        []
 
 
 
