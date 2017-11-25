@@ -34,12 +34,17 @@ type alias Player =
     }
 
 
+initialVelocity : Float
+initialVelocity =
+    0.03
+
+
 init : ( Model, Cmd Msg )
 init =
     ( { gameState = NotPlaying
       , playerStats = Player 0 0 0
       , ballPosition = ( -5, -5 )
-      , ballVelocity = ( 0.01, 0.01 )
+      , ballVelocity = ( initialVelocity, initialVelocity )
       , paddlePosition = 40
       }
     , Cmd.none
@@ -136,29 +141,31 @@ updateBallPosition dt model =
             Debug.log "rounded y" roundedBallPositionY
 
         debugmore =
-            Debug.log "the bool" (model.paddlePosition >= roundedBallPositionX && model.paddlePosition <= (roundedBallPositionX + 20))
+            Debug.log "the bool" (List.member roundedBallPositionY (List.range model.paddlePosition (model.paddlePosition + 20)))
 
         ( newBallPositionX, newBallVelocityX ) =
             if roundedBallPositionY == 100 then
-                ( 60, 0.01 )
-                -- 98 ->
-                --     if model.paddlePosition >= roundedBallPositionX && model.paddlePosition <= roundedBallPositionX + 20 then
-                --         ( 97, -1 * abs ballVelocityX )
-                --     else
-                --         ( ballPositionX, ballVelocityX )
+                ( 60, initialVelocity )
+            else if ballPositionX > 99 then
+                ( 98, -1 * abs ballVelocityX )
+            else if ballPositionX < 0 then
+                ( 0.5, abs ballVelocityX )
             else
                 ( ballPositionX, ballVelocityX )
 
         ( newBallPositionY, newBallVelocityY ) =
             case roundedBallPositionY of
                 100 ->
-                    ( 60, 0.01 )
+                    ( 60, initialVelocity )
 
                 88 ->
-                    if List.member roundedBallPositionY (List.range model.paddlePosition (model.paddlePosition + 20)) then
+                    if List.member roundedBallPositionX (List.range model.paddlePosition (model.paddlePosition + 20)) then
                         ( 87, -1 * abs ballVelocityY )
                     else
                         ( ballPositionY, ballVelocityY )
+
+                0 ->
+                    ( 0.5, abs ballVelocityY )
 
                 _ ->
                     ( ballPositionY, ballVelocityY )
