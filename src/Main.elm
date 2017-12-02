@@ -7,6 +7,8 @@ import Svg.Attributes exposing (width, height, viewBox, fill, x, y)
 import AnimationFrame
 import Time exposing (Time)
 import Keyboard.Extra exposing (Key)
+import Pieces.Block as Block
+import Pieces.Paddle as Paddle
 
 
 ---- MODEL ----
@@ -17,8 +19,9 @@ type alias Model =
     , playerStats : Player
     , ballPosition : ( Float, Float )
     , ballVelocity : ( Float, Float )
+    , paddle : Paddle.Paddle
     , paddlePosition : Int
-    , blocks : List Block
+    , blocks : List Block.Block
     }
 
 
@@ -35,32 +38,9 @@ type alias Player =
     }
 
 
-type alias Block =
-    { fillColor : String
-    , value : Int
-    , yPosition : Int
-    , xPosition : Int
-    }
-
-
 initialVelocity : Float
 initialVelocity =
     0.03
-
-
-createBlockList : String -> Int -> Int -> List Block
-createBlockList fillColor value yPosition =
-    List.map (Block fillColor value yPosition) (List.map ((*) 5) (List.range 0 19))
-
-
-initialBlocks : List Block
-initialBlocks =
-    createBlockList "#CB4744" 10 10
-        ++ createBlockList "#C76C3A" 8 12
-        ++ createBlockList "#B47830" 6 14
-        ++ createBlockList "#9FA426" 4 16
-        ++ createBlockList "#46A047" 2 18
-        ++ createBlockList "#4546C9" 1 20
 
 
 init : ( Model, Cmd Msg )
@@ -69,8 +49,9 @@ init =
       , playerStats = Player 0 0 0
       , ballPosition = ( -5, -5 )
       , ballVelocity = ( initialVelocity, initialVelocity )
+      , paddle = Paddle.initialPaddle
       , paddlePosition = 40
-      , blocks = initialBlocks
+      , blocks = Block.initialBlocks
       }
     , Cmd.none
     )
@@ -243,12 +224,12 @@ updateBallPosition dt model =
 
 checkBlockCollision : Float -> Int -> Model -> Bool
 checkBlockCollision ballX ballY model =
-    getRowOfBlocks ballY model.blocks
+    Block.getRowOfBlocks ballY model.blocks
         |> List.filter (\block -> (List.member (round ballX) (List.range block.xPosition (block.xPosition + 5))))
         |> List.isEmpty
 
 
-updatedListOfBlocks : Float -> Int -> List Block -> List Block
+updatedListOfBlocks : Float -> Int -> List Block.Block -> List Block.Block
 updatedListOfBlocks ballX ballY blocks =
     let
         filterBlocks bx by b =
@@ -262,11 +243,6 @@ updatedListOfBlocks ballX ballY blocks =
     in
         blocks
             |> List.filter (filterBlocks ballX ballY)
-
-
-getRowOfBlocks : Int -> List Block -> List Block
-getRowOfBlocks ballY blocks =
-    List.filter (\block -> block.yPosition == ballY) blocks
 
 
 
@@ -310,27 +286,10 @@ gameBoard model =
         , viewBox "0 0 100 90"
         , fill "#000000"
         ]
-        ((rowOfSvgBlocks model.blocks)
+        ((Block.rowOfSvgBlocks model.blocks)
             ++ [ ball model.ballPosition ]
-            ++ [ paddle model.paddlePosition ]
+            ++ [ Paddle.renderPaddle model.paddlePosition ]
         )
-
-
-rowOfSvgBlocks : List Block -> List (Html Msg)
-rowOfSvgBlocks blocks =
-    List.map svgBlock blocks
-
-
-svgBlock : Block -> Html Msg
-svgBlock { fillColor, value, yPosition, xPosition } =
-    rect
-        [ width "5%"
-        , height "2"
-        , fill fillColor
-        , y (toString yPosition)
-        , x ((toString xPosition) ++ "%")
-        ]
-        []
 
 
 ball : ( Float, Float ) -> Html Msg
@@ -341,18 +300,6 @@ ball ( xPosition, yPosition ) =
         , fill "#C64947"
         , x (toString xPosition)
         , y (toString yPosition)
-        ]
-        []
-
-
-paddle : Int -> Html Msg
-paddle xPosition =
-    rect
-        [ width "20"
-        , height "1.5"
-        , fill "#C64947"
-        , x (toString xPosition)
-        , y "88.5"
         ]
         []
 
