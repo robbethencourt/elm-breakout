@@ -85,7 +85,7 @@ update msg model =
                 Keyboard.Extra.Space ->
                     ( { model
                         | gameState = Playing
-                        , ballPosition = ( 30, 60 )
+                        , ballPosition = ( 3, 6 )
                       }
                     , Cmd.none
                     )
@@ -168,39 +168,55 @@ updateBallPosition dt model =
                     else
                         ( ballPositionY, ballVelocityY, model.blocks )
 
-                21 ->
+                22 ->
                     if not (checkBlockCollision ballPositionX 20 model) then
                         ( 22, abs ballVelocityY, updatedListOfBlocks ballPositionX 20 model.blocks )
                     else
                         ( ballPositionY, ballVelocityY, model.blocks )
 
-                19 ->
+                20 ->
                     if not (checkBlockCollision ballPositionX 18 model) then
                         ( 20, abs ballVelocityY, updatedListOfBlocks ballPositionX 18 model.blocks )
+                    else if not (checkBlockCollision ballPositionX 20 model) then
+                        ( 19, -1 * abs ballVelocityY, updatedListOfBlocks ballPositionX 20 model.blocks )
                     else
                         ( ballPositionY, ballVelocityY, model.blocks )
 
-                17 ->
+                18 ->
                     if not (checkBlockCollision ballPositionX 16 model) then
                         ( 18, abs ballVelocityY, updatedListOfBlocks ballPositionX 16 model.blocks )
+                    else if not (checkBlockCollision ballPositionX 18 model) then
+                        ( 17, -1 * abs ballVelocityY, updatedListOfBlocks ballPositionX 18 model.blocks )
                     else
                         ( ballPositionY, ballVelocityY, model.blocks )
 
-                15 ->
+                16 ->
                     if not (checkBlockCollision ballPositionX 14 model) then
                         ( 16, abs ballVelocityY, updatedListOfBlocks ballPositionX 14 model.blocks )
+                    else if not (checkBlockCollision ballPositionX 16 model) then
+                        ( 15, -1 * abs ballVelocityY, updatedListOfBlocks ballPositionX 16 model.blocks )
                     else
                         ( ballPositionY, ballVelocityY, model.blocks )
 
-                13 ->
+                14 ->
                     if not (checkBlockCollision ballPositionX 12 model) then
                         ( 14, abs ballVelocityY, updatedListOfBlocks ballPositionX 12 model.blocks )
+                    else if not (checkBlockCollision ballPositionX 14 model) then
+                        ( 13, -1 * abs ballVelocityY, updatedListOfBlocks ballPositionX 14 model.blocks )
                     else
                         ( ballPositionY, ballVelocityY, model.blocks )
 
-                11 ->
+                12 ->
                     if not (checkBlockCollision ballPositionX 10 model) then
                         ( 12, abs ballVelocityY, updatedListOfBlocks ballPositionX 10 model.blocks )
+                    else if not (checkBlockCollision ballPositionX 12 model) then
+                        ( 11, -1 * abs ballVelocityY, updatedListOfBlocks ballPositionX 12 model.blocks )
+                    else
+                        ( ballPositionY, ballVelocityY, model.blocks )
+
+                10 ->
+                    if not (checkBlockCollision ballPositionX 10 model) then
+                        ( 9, -1 * abs ballVelocityY, updatedListOfBlocks ballPositionX 10 model.blocks )
                     else
                         ( ballPositionY, ballVelocityY, model.blocks )
 
