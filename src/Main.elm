@@ -157,6 +157,7 @@ updateBallPosition dt model =
                 ( ballPositionX, ballVelocityX )
 
         ( newBallPositionY, newBallVelocityY, newListOfBlocks ) =
+            -- newListOfBlocks should be a maybe block to remove so i can use the same logic above
             case roundedBallPositionY of
                 100 ->
                     ( 60, initialVelocity, model.blocks )
@@ -242,15 +243,27 @@ checkBlockCollision : Float -> Int -> Model -> Bool
 checkBlockCollision ballX ballY model =
     Block.getRowOfBlocks ballY model.blocks
         |> List.filter (\block -> (List.member (round ballX) (List.range block.xPosition (block.xPosition + 5))))
+        |> Debug.log "how many lists of blocks"
         |> List.isEmpty
 
 
 updatedListOfBlocks : Float -> Int -> List Block.Block -> List Block.Block
 updatedListOfBlocks ballX ballY blocks =
     let
-        filterBlocks bx by b =
-            if List.member (round bx) (List.range b.xPosition (b.xPosition + 5)) then
-                if b.yPosition == by then
+        debugthis =
+            Debug.log "round bx" (round ballX)
+
+        theBlockToRemove =
+            List.filter (\block -> (List.member (round ballX) (List.range block.xPosition (block.xPosition + 5)))) blocks
+                |> List.head
+                |> Maybe.withDefault (Block.Block "" 0 0 0)
+
+        debugthistoo =
+            Debug.log "the one to remove" theBlockToRemove
+
+        filterBlocks blockToRemove by blockToCheck =
+            if blockToRemove == blockToCheck then
+                if blockToCheck.yPosition == by then
                     False
                 else
                     True
@@ -258,7 +271,7 @@ updatedListOfBlocks ballX ballY blocks =
                 True
     in
         blocks
-            |> List.filter (filterBlocks ballX ballY)
+            |> List.filter (filterBlocks theBlockToRemove ballY)
 
 
 
