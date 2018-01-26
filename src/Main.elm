@@ -23,6 +23,7 @@ type alias Model =
     , ballDirection : Ball.BallDirection
     , paddle : Paddle.Paddle
     , paddlePosition : Int
+    , currentCollision : Collision
     , blocks : List Block.Block
     }
 
@@ -30,7 +31,8 @@ type alias Model =
 type GameState
     = NotPlaying
     | Playing
-    | GameOver
+    | Won
+    | Lost
 
 
 type alias Player =
@@ -48,14 +50,13 @@ initialVelocity =
 init : ( Model, Cmd Msg )
 init =
     ( { gameState = NotPlaying
-      , playerStats =
-            Player 0 0 0
-            -- , ballPosition = ( -5, -5 )
-      , ballPosition = ( 40, 80 )
+      , playerStats = Player 0 0 0
+      , ballPosition = ( 40, 60 )
       , ballVelocity = ( initialVelocity, initialVelocity )
       , ballDirection = Ball.Down
-      , paddle = Paddle.initialPaddle
+      , paddle = Paddle.normalPaddle
       , paddlePosition = 40
+      , currentCollision = BottomWallCollision
       , blocks = Block.initialBlocks
       }
     , Cmd.none
@@ -80,18 +81,19 @@ update msg model =
                     ( model, Cmd.none )
 
                 Playing ->
-                    updateBallPosition dt model
+                    updateBallPosition2 dt model
 
-                GameOver ->
+                Won ->
+                    ( { model | ballPosition = ( -5, -5 ) }, Cmd.none )
+
+                Lost ->
                     ( { model | ballPosition = ( -5, -5 ) }, Cmd.none )
 
         KeyboardUpdate keycode ->
             case keycode of
                 Keyboard.Extra.Space ->
                     ( { model
-                        | gameState =
-                            Playing
-                            -- , ballPosition = ( 3, 6 )
+                        | gameState = Playing
                       }
                     , Cmd.none
                     )
@@ -122,322 +124,311 @@ update msg model =
                     ( model, Cmd.none )
 
 
-updateBallPosition : Time -> Model -> ( Model, Cmd Msg )
-updateBallPosition dt model =
+
+-- detect collisions
+
+
+type Collision
+    = TopWallCollision
+    | RightWallCollision
+    | BottomWallCollision
+    | LeftWallCollision
+    | LeftPaddleCollision
+    | LeftMiddlePaddleCollision
+    | MiddlePaddleCollision
+    | RightMiddlePaddleCollision
+    | RightPaddleCollision
+    | TopBlockCollision Block.Block
+    | BottomBlockCollision Block.Block
+
+
+updateBallPosition2 : Time -> Model -> ( Model, Cmd Msg )
+updateBallPosition2 dt model =
     let
         ( ballPositionX, ballPositionY ) =
             model.ballPosition
 
         ( ballVelocityX, ballVelocityY ) =
             model.ballVelocity
-
-        -- debugVelocityx =
-        --     Debug.log "ball position x" ballPositionX
-        --
-        -- debugVelocityY =
-        --     Debug.log "ball position y" ballPositionY
-        roundedBallPositionX =
-            floor ballPositionX
-
-        -- debugthree =
-        --     Debug.log "rounded x" roundedBallPositionX
-        --
-        -- debugpaddlepos =
-        --     Debug.log "paddle position" model.paddlePosition
-        roundedBallPositionY =
-            floor ballPositionY
-
-        debugBallDirection =
-            Debug.log "ball direction" model.ballDirection
-
-        -- debugtwo =
-        --     Debug.log "rounded y" roundedBallPositionY
-        --
-        -- debugmore =
-        --     Debug.log "the bool" (List.member roundedBallPositionY (List.range model.paddlePosition (model.paddlePosition + 20)))
-        ( newBallPositionX, newBallVelocityX ) =
-            if roundedBallPositionY == 100 then
-                ( 30, initialVelocity )
-            else if ballPositionX > 99 then
-                ( 98, -1 * abs ballVelocityX )
-            else if ballPositionX < 0 then
-                ( 0.5, abs ballVelocityX )
-            else
-                ( ballPositionX, ballVelocityX )
-
-        ( newBallPositionY, newBallVelocityY, newListOfBlocks, newBallDirection ) =
-            -- newListOfBlocks should be a maybe block to remove so i can use the same logic above
-            case roundedBallPositionY of
-                100 ->
-                    ( 60, initialVelocity, model.blocks, Ball.Down )
-
-                88 ->
-                    -- need the paddle position so the ball can change it's tragectory
-                    if List.member roundedBallPositionX (List.range model.paddlePosition (model.paddlePosition + 20)) then
-                        ( 87, -1 * abs ballVelocityY, model.blocks, Ball.reverseBallDirection model.ballDirection )
-                    else
-                        ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                22 ->
-                    case model.ballDirection of
-                        Ball.Up ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 20 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 23, abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                        Ball.Down ->
-                            ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                20 ->
-                    case model.ballDirection of
-                        Ball.Up ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 18 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 21, -1 * abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                        Ball.Down ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 20 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 19, abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                18 ->
-                    case model.ballDirection of
-                        Ball.Up ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 16 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 19, abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                        Ball.Down ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 18 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 17, -1 * abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                16 ->
-                    case model.ballDirection of
-                        Ball.Up ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 14 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 17, abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                        Ball.Down ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 16 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 15, -1 * abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                14 ->
-                    case model.ballDirection of
-                        Ball.Up ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 12 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 15, abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                        Ball.Down ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 14 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 13, -1 * abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                12 ->
-                    case model.ballDirection of
-                        Ball.Up ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 10 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 13, abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                        Ball.Down ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 12 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 11, -1 * abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                10 ->
-                    case model.ballDirection of
-                        Ball.Up ->
-                            ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                        Ball.Down ->
-                            let
-                                theBlockToRemoveInAList =
-                                    checkBlockCollision ballPositionX 10 model
-
-                                theBlockToRemove =
-                                    theBlockToRemoveInAList
-                                        |> List.head
-                                        |> Maybe.withDefault (Block.Block "" 0 0 0)
-                            in
-                                if List.length theBlockToRemoveInAList > 0 then
-                                    ( 9, -1 * abs ballVelocityY, updateListOfBlocks theBlockToRemove model.blocks, Ball.reverseBallDirection model.ballDirection )
-                                else
-                                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
-
-                0 ->
-                    ( 1, abs ballVelocityY, model.blocks, Ball.reverseBallDirection model.ballDirection )
-
-                _ ->
-                    ( ballPositionY, ballVelocityY, model.blocks, model.ballDirection )
     in
-        ( { model
-            | ballPosition =
-                ( newBallPositionX + newBallVelocityX * dt
-                , newBallPositionY + newBallVelocityY * dt
+        if ballPositionY < 86 && ballPositionY > 24 && ballPositionX > 0 && ballPositionX < 100 then
+            ( { model
+                | ballPosition =
+                    ( ballPositionX + ballVelocityX * dt
+                    , ballPositionY + ballVelocityY * dt
+                    )
+              }
+            , Cmd.none
+            )
+        else
+            let
+                maybeCollision =
+                    collectCollisions dt model
+            in
+                case maybeCollision of
+                    Nothing ->
+                        ( { model
+                            | ballPosition =
+                                ( ballPositionX + ballVelocityX * dt
+                                , ballPositionY + ballVelocityY * dt
+                                )
+                          }
+                        , Cmd.none
+                        )
+
+                    Just collision ->
+                        handleCollision collision model
+
+
+handleCollision : Collision -> Model -> ( Model, Cmd Msg )
+handleCollision collision model =
+    let
+        ( ballX, ballY ) =
+            model.ballPosition
+
+        ( ballVelocityX, ballVelocityY ) =
+            model.ballVelocity
+    in
+        case collision of
+            TopWallCollision ->
+                ( { model
+                    | ballPosition = ( ballX, 0.1 )
+                    , ballVelocity = ( ballVelocityX, abs ballVelocityY )
+                    , currentCollision = TopWallCollision
+                  }
+                , Cmd.none
                 )
-            , ballVelocity = ( newBallVelocityX, newBallVelocityY )
-            , ballDirection = newBallDirection
-            , blocks = newListOfBlocks
-          }
-        , Cmd.none
-        )
+
+            RightWallCollision ->
+                ( { model
+                    | ballPosition = ( 99.9, ballY )
+                    , ballVelocity = ( -1 * abs ballVelocityX, ballVelocityY )
+                    , currentCollision = RightWallCollision
+                  }
+                , Cmd.none
+                )
+
+            BottomWallCollision ->
+                ( { model
+                    | ballPosition = ( 60, 60 )
+                    , ballVelocity = ( initialVelocity, initialVelocity )
+                    , currentCollision = BottomWallCollision
+                  }
+                , Cmd.none
+                )
+
+            LeftWallCollision ->
+                ( { model
+                    | ballPosition = ( 0.1, ballY )
+                    , ballVelocity = ( abs ballVelocityX, ballVelocityY )
+                    , currentCollision = LeftWallCollision
+                  }
+                , Cmd.none
+                )
+
+            LeftPaddleCollision ->
+                ( { model
+                    | ballPosition = ( ballX, 87.9 )
+                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , currentCollision = LeftPaddleCollision
+                  }
+                , Cmd.none
+                )
+
+            LeftMiddlePaddleCollision ->
+                ( { model
+                    | ballPosition = ( ballX, 87.9 )
+                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , currentCollision = LeftMiddlePaddleCollision
+                  }
+                , Cmd.none
+                )
+
+            MiddlePaddleCollision ->
+                ( { model
+                    | ballPosition = ( ballX, 87.9 )
+                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , currentCollision = MiddlePaddleCollision
+                  }
+                , Cmd.none
+                )
+
+            RightMiddlePaddleCollision ->
+                ( { model
+                    | ballPosition = ( ballX, 87.9 )
+                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , currentCollision = RightMiddlePaddleCollision
+                  }
+                , Cmd.none
+                )
+
+            RightPaddleCollision ->
+                ( { model
+                    | ballPosition = ( ballX, 87.9 )
+                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , currentCollision = RightPaddleCollision
+                  }
+                , Cmd.none
+                )
+
+            TopBlockCollision block ->
+                ( { model
+                    | ballPosition = ( ballX, (toFloat block.yPosition) - 2 )
+                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , blocks = List.filter (\b -> b /= block) model.blocks
+                    , currentCollision = TopBlockCollision block
+                  }
+                , Cmd.none
+                )
+
+            BottomBlockCollision block ->
+                ( { model
+                    | ballPosition = ( ballX, (toFloat block.yPosition) + 2 )
+                    , ballVelocity = ( ballVelocityX, abs ballVelocityY )
+                    , blocks = List.filter (\b -> b /= block) model.blocks
+                    , currentCollision = BottomBlockCollision block
+                  }
+                , Cmd.none
+                )
 
 
-checkBlockCollision : Float -> Int -> Model -> List Block.Block
-checkBlockCollision ballX ballY model =
-    Block.getRowOfBlocks ballY model.blocks
-        -- |> List.filter (\block -> (List.member (round ballX) (List.range block.xPosition (block.xPosition + 5))))
-        |>
-            List.filter (\block -> ballX >= (toFloat block.xPosition) && ballX <= (toFloat (block.xPosition + 5)))
-        |> Debug.log "how many lists of blocks"
+collectCollisions : Time -> Model -> Maybe Collision
+collectCollisions dt model =
+    detectCollisions dt model
+        |> List.filterMap identity
+        |> List.head
 
 
+detectCollisions : Time -> Model -> List (Maybe Collision)
+detectCollisions dt model =
+    let
+        wallCollision =
+            detectWallCollision model.ballPosition
 
--- |> List.isEmpty
+        paddleCollision =
+            detectPaddleCollision model.ballPosition model.paddlePosition model.paddle
+
+        blockCollision =
+            detectBlockCollision model.currentCollision model.ballPosition model.ballVelocity model.blocks
+    in
+        [ wallCollision, paddleCollision, blockCollision ]
 
 
-updateListOfBlocks : Block.Block -> List Block.Block -> List Block.Block
-updateListOfBlocks b blocks =
-    -- let
-    --     debugthis =
-    --         Debug.log "round bx" (round ballX)
-    --
-    --     theBlockToRemove =
-    --         List.filter (\block -> (List.member (round ballX) (List.range block.xPosition (block.xPosition + 5)))) (Block.getRowOfBlocks ballY blocks)
-    --             |> List.head
-    --             |> Maybe.withDefault (Block.Block "" 0 0 0)
-    --
-    --     debugthistoo =
-    --         Debug.log "the one to remove" theBlockToRemove
-    --
-    --     filterBlocks blockToRemove by blockToCheck =
-    --         let
-    --             debugmore =
-    --                 Debug.log "btr" (blockToRemove == blockToCheck)
-    --         in
-    --             if blockToRemove == blockToCheck then
-    --                 if blockToCheck.yPosition == by then
-    --                     False
-    --                 else
-    --                     True
-    --             else
-    --                 True
-    -- in
-    List.filter (\block -> block /= b) blocks
+detectWallCollision : ( Float, Float ) -> Maybe Collision
+detectWallCollision ( ballPosX, ballPosY ) =
+    if ballPosY > 100 then
+        Just BottomWallCollision
+    else if ballPosY < 0 then
+        Just TopWallCollision
+    else if ballPosX > 100 then
+        Just RightWallCollision
+    else if ballPosX < 0 then
+        Just LeftWallCollision
+    else
+        Nothing
+
+
+detectPaddleCollision : ( Float, Float ) -> Int -> Paddle.Paddle -> Maybe Collision
+detectPaddleCollision ( ballPosX, ballPosY ) paddlePosition paddle =
+    if ballPosY > 88 && ballPosY < 89 then
+        case paddle of
+            Paddle.NormalPaddle paddleSections ->
+                if ballPosX < (toFloat paddlePosition) || ballPosX > (toFloat paddlePosition) + 20 then
+                    Nothing
+                else
+                    let
+                        ballAlongPaddle =
+                            floor (ballPosX - (toFloat paddlePosition))
+                    in
+                        case ballAlongPaddle - (ballAlongPaddle % 4) of
+                            0 ->
+                                Just LeftPaddleCollision
+
+                            4 ->
+                                Just LeftMiddlePaddleCollision
+
+                            8 ->
+                                Just MiddlePaddleCollision
+
+                            12 ->
+                                Just RightMiddlePaddleCollision
+
+                            16 ->
+                                Just RightPaddleCollision
+
+                            _ ->
+                                Nothing
+
+            Paddle.ShortPaddle paddleSections ->
+                if ballPosX < (toFloat paddlePosition) || ballPosX > (toFloat paddlePosition) + 10 then
+                    Nothing
+                else
+                    let
+                        ballAlongPaddle =
+                            floor (ballPosX - (toFloat paddlePosition))
+                    in
+                        case ballAlongPaddle - (ballAlongPaddle % 4) of
+                            0 ->
+                                Just LeftPaddleCollision
+
+                            2 ->
+                                Just LeftMiddlePaddleCollision
+
+                            4 ->
+                                Just MiddlePaddleCollision
+
+                            6 ->
+                                Just RightMiddlePaddleCollision
+
+                            8 ->
+                                Just RightPaddleCollision
+
+                            _ ->
+                                Nothing
+    else
+        Nothing
+
+
+detectBlockCollision : Collision -> ( Float, Float ) -> ( Float, Float ) -> List Block.Block -> Maybe Collision
+detectBlockCollision currentCollision ( ballPosX, ballPosY ) ( ballVelX, ballVelY ) blocks =
+    case currentCollision of
+        TopBlockCollision _ ->
+            Nothing
+
+        BottomBlockCollision _ ->
+            Nothing
+
+        _ ->
+            if ballPosY < 22 || ballPosY >= 10 then
+                let
+                    ballYFloor =
+                        floor ballPosY
+
+                    ballYToGetRow =
+                        ballYFloor - (ballYFloor % 2)
+
+                    ballXFloor =
+                        floor ballPosX
+
+                    ballXToGetBlock =
+                        ballXFloor - (ballXFloor % 5)
+
+                    maybeBlock =
+                        blocks
+                            |> Block.getRowOfBlocks ballYToGetRow
+                            |> Block.getBlock ballXToGetBlock
+                in
+                    case maybeBlock of
+                        Just block ->
+                            if ballVelY < 0 then
+                                Just <| BottomBlockCollision block
+                            else
+                                Just <| TopBlockCollision block
+
+                        Nothing ->
+                            Nothing
+            else
+                Nothing
 
 
 
@@ -483,7 +474,7 @@ gameBoard model =
         ]
         ((Block.rowOfSvgBlocks model.blocks)
             ++ [ Ball.ball model.ballPosition ]
-            ++ [ Paddle.renderPaddle model.paddlePosition ]
+            ++ [ Paddle.renderPaddle model.paddlePosition model.paddle ]
         )
 
 
