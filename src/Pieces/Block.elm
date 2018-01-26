@@ -1,4 +1,4 @@
-module Pieces.Block exposing (Block, initialBlocks, rowOfSvgBlocks, getRowOfBlocks)
+module Pieces.Block exposing (Block, initialBlocks, rowOfSvgBlocks, getRowOfBlocks, getBlock)
 
 import Svg exposing (Svg, rect)
 import Svg.Attributes exposing (width, height, fill, x, y)
@@ -55,3 +55,10 @@ svgBlock { fillColor, value, yPosition, xPosition } =
 getRowOfBlocks : Int -> List Block -> List Block
 getRowOfBlocks ballY blocks =
     List.filter (\block -> block.yPosition == ballY) blocks
+
+
+getBlock : Int -> List Block -> Maybe Block
+getBlock ballX blocks =
+    blocks
+        |> List.filter (\block -> block.xPosition == ballX)
+        |> List.head

@@ -1,25 +1,21 @@
-module Pieces.Paddle exposing (Paddle, initialPaddle, renderPaddle)
+module Pieces.Paddle exposing (Paddle(..), normalPaddle, shortPaddle, renderPaddle)
 
 import Svg exposing (Svg, rect)
 import Svg.Attributes exposing (width, height, fill, x, y)
 
 
-type alias Paddle =
+type Paddle
+    = NormalPaddle PaddleSize
+    | ShortPaddle PaddleSize
+
+
+type alias PaddleSize =
     { left : Left
     , leftMiddle : LeftMiddle
     , middle : Middle
     , rightMiddle : RightMiddle
     , right : Right
     }
-
-
-
--- type PaddleSection
---     = Left
---     | LeftMiddle
---     | Middle
---     | RightMiddle
---     | Right
 
 
 type alias Left =
@@ -42,19 +38,29 @@ type alias Right =
     Int
 
 
-initialPaddle : Paddle
-initialPaddle =
-    Paddle 0 4 8 12 16
+normalPaddle : Paddle
+normalPaddle =
+    NormalPaddle <| PaddleSize 0 4 8 12 16
+
+
+shortPaddle : Paddle
+shortPaddle =
+    ShortPaddle <| PaddleSize 0 2 4 6 8
 
 
 
 ---- html ----
 
 
-renderPaddle : Int -> Svg.Svg msg
-renderPaddle xPosition =
+renderPaddle : Int -> Paddle -> Svg.Svg msg
+renderPaddle xPosition paddle =
     rect
-        [ width (toString (initialPaddle.right + 4))
+        [ case paddle of
+            NormalPaddle paddleSections ->
+                width (toString (paddleSections.right + 4))
+
+            ShortPaddle paddleSections ->
+                width (toString (paddleSections.right + 2))
         , height "1.5"
         , fill "#C64947"
         , x (toString xPosition)
