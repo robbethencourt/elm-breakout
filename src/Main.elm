@@ -24,6 +24,7 @@ type alias Model =
     , paddle : Paddle.Paddle
     , paddlePosition : Int
     , currentCollision : Collision
+    , gameSpeed : Speed
     , blocks : List Block.Block
     }
 
@@ -42,6 +43,11 @@ type alias Player =
     }
 
 
+type Speed
+    = Slow
+    | Fast
+
+
 initialVelocity : Float
 initialVelocity =
     0.03
@@ -57,6 +63,7 @@ init =
       , paddle = Paddle.normalPaddle
       , paddlePosition = 40
       , currentCollision = BottomWallCollision
+      , gameSpeed = Slow
       , blocks = Block.initialBlocks
       }
     , Cmd.none
@@ -213,6 +220,8 @@ handleCollision collision model =
                     | ballPosition = ( 60, 60 )
                     , ballVelocity = ( initialVelocity, initialVelocity )
                     , currentCollision = BottomWallCollision
+                    , gameSpeed = Slow
+                    , paddle = Paddle.normalPaddle
                   }
                 , Cmd.none
                 )
@@ -272,24 +281,42 @@ handleCollision collision model =
                 )
 
             TopBlockCollision block ->
-                ( { model
-                    | ballPosition = ( ballX, (toFloat block.yPosition) - 2 )
-                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
-                    , blocks = List.filter (\b -> b /= block) model.blocks
-                    , currentCollision = TopBlockCollision block
-                  }
-                , Cmd.none
-                )
+                let
+                    ( updatedBallVelocityX, updatedBallVelocityY, updatedGameSpeed, updatedPaddle ) =
+                        if block.yPosition < 16 && model.gameSpeed == Slow then
+                            ( ballVelocityX * 2, ballVelocityY * 2, Fast, Paddle.shortPaddle )
+                        else
+                            ( ballVelocityX, ballVelocityY, model.gameSpeed, model.paddle )
+                in
+                    ( { model
+                        | ballPosition = ( ballX, (toFloat block.yPosition) - 2 )
+                        , ballVelocity = ( updatedBallVelocityX, -1 * abs updatedBallVelocityY )
+                        , blocks = List.filter (\b -> b /= block) model.blocks
+                        , currentCollision = TopBlockCollision block
+                        , gameSpeed = updatedGameSpeed
+                        , paddle = updatedPaddle
+                      }
+                    , Cmd.none
+                    )
 
             BottomBlockCollision block ->
-                ( { model
-                    | ballPosition = ( ballX, (toFloat block.yPosition) + 2 )
-                    , ballVelocity = ( ballVelocityX, abs ballVelocityY )
-                    , blocks = List.filter (\b -> b /= block) model.blocks
-                    , currentCollision = BottomBlockCollision block
-                  }
-                , Cmd.none
-                )
+                let
+                    ( updatedBallVelocityX, updatedBallVelocityY, updatedGameSpeed, updatedPaddle ) =
+                        if block.yPosition < 16 && model.gameSpeed == Slow then
+                            ( ballVelocityX * 2, ballVelocityY * 2, Fast, Paddle.shortPaddle )
+                        else
+                            ( ballVelocityX, ballVelocityY, model.gameSpeed, model.paddle )
+                in
+                    ( { model
+                        | ballPosition = ( ballX, (toFloat block.yPosition) + 2 )
+                        , ballVelocity = ( updatedBallVelocityX, abs updatedBallVelocityY )
+                        , blocks = List.filter (\b -> b /= block) model.blocks
+                        , currentCollision = BottomBlockCollision block
+                        , gameSpeed = updatedGameSpeed
+                        , paddle = updatedPaddle
+                      }
+                    , Cmd.none
+                    )
 
 
 collectCollisions : Time -> Model -> Maybe Collision
