@@ -23,8 +23,8 @@ reverseBallDirection bd =
 ball : ( Float, Float ) -> Html msg
 ball ( xPosition, yPosition ) =
     rect
-        [ width "1"
-        , height "1"
+        [ width "1.5"
+        , height "1.5"
         , fill "#C64947"
         , x (toString xPosition)
         , y (toString yPosition)

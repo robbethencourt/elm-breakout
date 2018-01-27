@@ -229,7 +229,7 @@ handleCollision collision model =
             LeftPaddleCollision ->
                 ( { model
                     | ballPosition = ( ballX, 87.9 )
-                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , ballVelocity = ( -1 * abs ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = LeftPaddleCollision
                   }
                 , Cmd.none
@@ -265,7 +265,7 @@ handleCollision collision model =
             RightPaddleCollision ->
                 ( { model
                     | ballPosition = ( ballX, 87.9 )
-                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , ballVelocity = ( abs ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = RightPaddleCollision
                   }
                 , Cmd.none
