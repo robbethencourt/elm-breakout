@@ -116,10 +116,6 @@ keyToGameControl isActive key =
             NoOp
 
 
-
--- consider KeyboardInput GameControl isActive / the Action type needs to convert keycodes to types to pass to the KeybaordInput
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -146,27 +142,6 @@ update msg model =
                     , Cmd.none
                     )
 
-                -- Keyboard.Extra.ArrowLeft ->
-                --     case model.gameState of
-                --         Playing ->
-                --             if model.paddlePosition > 0 then
-                --                 ( { model | paddlePosition = model.paddlePosition - 1 }, Cmd.none )
-                --             else
-                --                 ( model, Cmd.none )
-                --
-                --         _ ->
-                --             ( model, Cmd.none )
-                --
-                -- Keyboard.Extra.ArrowRight ->
-                --     case model.gameState of
-                --         Playing ->
-                --             if model.paddlePosition < 80 then
-                --                 ( { model | paddlePosition = model.paddlePosition + 1 }, Cmd.none )
-                --             else
-                --                 ( model, Cmd.none )
-                --
-                --         _ ->
-                --             ( model, Cmd.none )
                 _ ->
                     ( model, Cmd.none )
 
