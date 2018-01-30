@@ -22,8 +22,10 @@ type alias Model =
     , ballVelocity : ( Float, Float )
     , ballDirection : Ball.BallDirection
     , paddle : Paddle.Paddle
-    , paddlePosition : Int
+    , gameControls : GameControls
+    , paddlePosition : Float
     , currentCollision : Collision
+    , gameSpeed : Speed
     , blocks : List Block.Block
     }
 
@@ -42,6 +44,26 @@ type alias Player =
     }
 
 
+type Speed
+    = Slow
+    | Fast
+
+
+type alias GameControls =
+    { paddleLeft : Bool
+    , paddleRight : Bool
+    , launchBall : Bool
+    }
+
+
+initialGameControls : GameControls
+initialGameControls =
+    { paddleLeft = False
+    , paddleRight = False
+    , launchBall = False
+    }
+
+
 initialVelocity : Float
 initialVelocity =
     0.03
@@ -55,8 +77,10 @@ init =
       , ballVelocity = ( initialVelocity, initialVelocity )
       , ballDirection = Ball.Down
       , paddle = Paddle.normalPaddle
+      , gameControls = initialGameControls
       , paddlePosition = 40
       , currentCollision = BottomWallCollision
+      , gameSpeed = Slow
       , blocks = Block.initialBlocks
       }
     , Cmd.none
@@ -69,7 +93,27 @@ init =
 
 type Msg
     = TimeUpdate Time
-    | KeyboardUpdate Key
+    | KeyboardPress Key
+    | GameInput GameControl Bool
+    | NoOp
+
+
+type GameControl
+    = PaddleLeft
+    | PaddleRight
+
+
+keyToGameControl : Bool -> Key -> Msg
+keyToGameControl isActive key =
+    case key of
+        Keyboard.Extra.ArrowLeft ->
+            GameInput PaddleLeft isActive
+
+        Keyboard.Extra.ArrowRight ->
+            GameInput PaddleRight isActive
+
+        _ ->
+            NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -89,7 +133,7 @@ update msg model =
                 Lost ->
                     ( { model | ballPosition = ( -5, -5 ) }, Cmd.none )
 
-        KeyboardUpdate keycode ->
+        KeyboardPress keycode ->
             case keycode of
                 Keyboard.Extra.Space ->
                     ( { model
@@ -98,30 +142,31 @@ update msg model =
                     , Cmd.none
                     )
 
-                Keyboard.Extra.ArrowLeft ->
-                    case model.gameState of
-                        Playing ->
-                            if model.paddlePosition > 0 then
-                                ( { model | paddlePosition = model.paddlePosition - 1 }, Cmd.none )
-                            else
-                                ( model, Cmd.none )
-
-                        _ ->
-                            ( model, Cmd.none )
-
-                Keyboard.Extra.ArrowRight ->
-                    case model.gameState of
-                        Playing ->
-                            if model.paddlePosition < 80 then
-                                ( { model | paddlePosition = model.paddlePosition + 1 }, Cmd.none )
-                            else
-                                ( model, Cmd.none )
-
-                        _ ->
-                            ( model, Cmd.none )
-
                 _ ->
                     ( model, Cmd.none )
+
+        GameInput gameControl isActive ->
+            let
+                gameControls =
+                    model.gameControls
+            in
+                case gameControl of
+                    PaddleLeft ->
+                        ( { model
+                            | gameControls = { gameControls | paddleLeft = isActive }
+                          }
+                        , Cmd.none
+                        )
+
+                    PaddleRight ->
+                        ( { model
+                            | gameControls = { gameControls | paddleRight = isActive }
+                          }
+                        , Cmd.none
+                        )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 
@@ -157,6 +202,7 @@ updateBallPosition2 dt model =
                     ( ballPositionX + ballVelocityX * dt
                     , ballPositionY + ballVelocityY * dt
                     )
+                , paddlePosition = updatePaddlePosition model.gameControls model.paddlePosition model.paddle
               }
             , Cmd.none
             )
@@ -172,12 +218,17 @@ updateBallPosition2 dt model =
                                 ( ballPositionX + ballVelocityX * dt
                                 , ballPositionY + ballVelocityY * dt
                                 )
+                            , paddlePosition = updatePaddlePosition model.gameControls model.paddlePosition model.paddle
                           }
                         , Cmd.none
                         )
 
                     Just collision ->
-                        handleCollision collision model
+                        let
+                            modelWithUpdatedGameControls =
+                                { model | paddlePosition = updatePaddlePosition model.gameControls model.paddlePosition model.paddle }
+                        in
+                            handleCollision collision modelWithUpdatedGameControls
 
 
 handleCollision : Collision -> Model -> ( Model, Cmd Msg )
@@ -213,6 +264,8 @@ handleCollision collision model =
                     | ballPosition = ( 60, 60 )
                     , ballVelocity = ( initialVelocity, initialVelocity )
                     , currentCollision = BottomWallCollision
+                    , gameSpeed = Slow
+                    , paddle = Paddle.normalPaddle
                   }
                 , Cmd.none
                 )
@@ -229,7 +282,7 @@ handleCollision collision model =
             LeftPaddleCollision ->
                 ( { model
                     | ballPosition = ( ballX, 87.9 )
-                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , ballVelocity = ( -1 * abs ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = LeftPaddleCollision
                   }
                 , Cmd.none
@@ -265,31 +318,49 @@ handleCollision collision model =
             RightPaddleCollision ->
                 ( { model
                     | ballPosition = ( ballX, 87.9 )
-                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
+                    , ballVelocity = ( abs ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = RightPaddleCollision
                   }
                 , Cmd.none
                 )
 
             TopBlockCollision block ->
-                ( { model
-                    | ballPosition = ( ballX, (toFloat block.yPosition) - 2 )
-                    , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
-                    , blocks = List.filter (\b -> b /= block) model.blocks
-                    , currentCollision = TopBlockCollision block
-                  }
-                , Cmd.none
-                )
+                let
+                    ( updatedBallVelocityX, updatedBallVelocityY, updatedGameSpeed, updatedPaddle ) =
+                        if block.yPosition < 16 && model.gameSpeed == Slow then
+                            ( ballVelocityX * 2, ballVelocityY * 2, Fast, Paddle.shortPaddle )
+                        else
+                            ( ballVelocityX, ballVelocityY, model.gameSpeed, model.paddle )
+                in
+                    ( { model
+                        | ballPosition = ( ballX, (toFloat block.yPosition) - 2 )
+                        , ballVelocity = ( updatedBallVelocityX, -1 * abs updatedBallVelocityY )
+                        , blocks = List.filter (\b -> b /= block) model.blocks
+                        , currentCollision = TopBlockCollision block
+                        , gameSpeed = updatedGameSpeed
+                        , paddle = updatedPaddle
+                      }
+                    , Cmd.none
+                    )
 
             BottomBlockCollision block ->
-                ( { model
-                    | ballPosition = ( ballX, (toFloat block.yPosition) + 2 )
-                    , ballVelocity = ( ballVelocityX, abs ballVelocityY )
-                    , blocks = List.filter (\b -> b /= block) model.blocks
-                    , currentCollision = BottomBlockCollision block
-                  }
-                , Cmd.none
-                )
+                let
+                    ( updatedBallVelocityX, updatedBallVelocityY, updatedGameSpeed, updatedPaddle ) =
+                        if block.yPosition < 16 && model.gameSpeed == Slow then
+                            ( ballVelocityX * 2, ballVelocityY * 2, Fast, Paddle.shortPaddle )
+                        else
+                            ( ballVelocityX, ballVelocityY, model.gameSpeed, model.paddle )
+                in
+                    ( { model
+                        | ballPosition = ( ballX, (toFloat block.yPosition) + 2 )
+                        , ballVelocity = ( updatedBallVelocityX, abs updatedBallVelocityY )
+                        , blocks = List.filter (\b -> b /= block) model.blocks
+                        , currentCollision = BottomBlockCollision block
+                        , gameSpeed = updatedGameSpeed
+                        , paddle = updatedPaddle
+                      }
+                    , Cmd.none
+                    )
 
 
 collectCollisions : Time -> Model -> Maybe Collision
@@ -328,17 +399,17 @@ detectWallCollision ( ballPosX, ballPosY ) =
         Nothing
 
 
-detectPaddleCollision : ( Float, Float ) -> Int -> Paddle.Paddle -> Maybe Collision
+detectPaddleCollision : ( Float, Float ) -> Float -> Paddle.Paddle -> Maybe Collision
 detectPaddleCollision ( ballPosX, ballPosY ) paddlePosition paddle =
     if ballPosY > 88 && ballPosY < 89 then
         case paddle of
             Paddle.NormalPaddle paddleSections ->
-                if ballPosX < (toFloat paddlePosition) || ballPosX > (toFloat paddlePosition) + 20 then
+                if ballPosX < paddlePosition || ballPosX > paddlePosition + 20 then
                     Nothing
                 else
                     let
                         ballAlongPaddle =
-                            floor (ballPosX - (toFloat paddlePosition))
+                            floor (ballPosX - paddlePosition)
                     in
                         case ballAlongPaddle - (ballAlongPaddle % 4) of
                             0 ->
@@ -360,12 +431,12 @@ detectPaddleCollision ( ballPosX, ballPosY ) paddlePosition paddle =
                                 Nothing
 
             Paddle.ShortPaddle paddleSections ->
-                if ballPosX < (toFloat paddlePosition) || ballPosX > (toFloat paddlePosition) + 10 then
+                if ballPosX < paddlePosition || ballPosX > paddlePosition + 10 then
                     Nothing
                 else
                     let
                         ballAlongPaddle =
-                            floor (ballPosX - (toFloat paddlePosition))
+                            floor (ballPosX - paddlePosition)
                     in
                         case ballAlongPaddle - (ballAlongPaddle % 4) of
                             0 ->
@@ -431,6 +502,30 @@ detectBlockCollision currentCollision ( ballPosX, ballPosY ) ( ballVelX, ballVel
                 Nothing
 
 
+updatePaddlePosition : GameControls -> Float -> Paddle.Paddle -> Float
+updatePaddlePosition gameControls paddlePosition paddle =
+    if gameControls.paddleLeft then
+        if paddlePosition > 0 then
+            paddlePosition - 1
+        else
+            paddlePosition
+    else if gameControls.paddleRight then
+        case paddle of
+            Paddle.NormalPaddle paddleSize ->
+                if paddlePosition < 80 then
+                    paddlePosition + 1
+                else
+                    paddlePosition
+
+            Paddle.ShortPaddle paddleSize ->
+                if paddlePosition < 90 then
+                    paddlePosition + 1
+                else
+                    paddlePosition
+    else
+        paddlePosition
+
+
 
 ---- VIEW ----
 
@@ -488,11 +583,12 @@ subscriptions model =
         Playing ->
             Sub.batch
                 [ AnimationFrame.diffs TimeUpdate
-                , Keyboard.Extra.downs KeyboardUpdate
+                , Keyboard.Extra.downs <| keyToGameControl True
+                , Keyboard.Extra.ups <| keyToGameControl False
                 ]
 
         _ ->
-            Keyboard.Extra.downs KeyboardUpdate
+            Keyboard.Extra.downs KeyboardPress
 
 
 main : Program Never Model Msg

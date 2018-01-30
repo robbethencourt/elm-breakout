@@ -52,7 +52,7 @@ shortPaddle =
 ---- html ----
 
 
-renderPaddle : Int -> Paddle -> Svg.Svg msg
+renderPaddle : Float -> Paddle -> Svg.Svg msg
 renderPaddle xPosition paddle =
     rect
         [ case paddle of
