@@ -72,7 +72,7 @@ initialVelocity =
 init : ( Model, Cmd Msg )
 init =
     ( { gameState = NotPlaying
-      , playerStats = Player 0 0 0
+      , playerStats = Player 0 0 1
       , ballPosition = ( 40, 60 )
       , ballVelocity = ( initialVelocity, initialVelocity )
       , ballDirection = Ball.Down
@@ -331,9 +331,13 @@ handleCollision collision model =
                             ( ballVelocityX * 2, ballVelocityY * 2, Fast, Paddle.shortPaddle )
                         else
                             ( ballVelocityX, ballVelocityY, model.gameSpeed, model.paddle )
+
+                    playerStats =
+                        model.playerStats
                 in
                     ( { model
-                        | ballPosition = ( ballX, (toFloat block.yPosition) - 2 )
+                        | playerStats = { playerStats | score = playerStats.score + block.value }
+                        , ballPosition = ( ballX, (toFloat block.yPosition) - 2 )
                         , ballVelocity = ( updatedBallVelocityX, -1 * abs updatedBallVelocityY )
                         , blocks = List.filter (\b -> b /= block) model.blocks
                         , currentCollision = TopBlockCollision block
@@ -350,9 +354,13 @@ handleCollision collision model =
                             ( ballVelocityX * 2, ballVelocityY * 2, Fast, Paddle.shortPaddle )
                         else
                             ( ballVelocityX, ballVelocityY, model.gameSpeed, model.paddle )
+
+                    playerStats =
+                        model.playerStats
                 in
                     ( { model
-                        | ballPosition = ( ballX, (toFloat block.yPosition) + 2 )
+                        | playerStats = { playerStats | score = playerStats.score + block.value }
+                        , ballPosition = ( ballX, (toFloat block.yPosition) + 2 )
                         , ballVelocity = ( updatedBallVelocityX, abs updatedBallVelocityY )
                         , blocks = List.filter (\b -> b /= block) model.blocks
                         , currentCollision = BottomBlockCollision block
