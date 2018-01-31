@@ -32,9 +32,14 @@ type alias Model =
 
 type GameState
     = NotPlaying
-    | Playing
+    | Playing BallMovement
     | Won
     | Lost
+
+
+type BallMovement
+    = NotMoving
+    | Moving
 
 
 type alias Player =
@@ -66,14 +71,19 @@ initialGameControls =
 
 initialVelocity : Float
 initialVelocity =
-    0.03
+    -0.03
+
+
+initialBallPosition : Float
+initialBallPosition =
+    80
 
 
 init : ( Model, Cmd Msg )
 init =
     ( { gameState = NotPlaying
-      , playerStats = Player 0 0 1
-      , ballPosition = ( 40, 60 )
+      , playerStats = Player 0 5 1
+      , ballPosition = ( 40, initialBallPosition )
       , ballVelocity = ( initialVelocity, initialVelocity )
       , ballDirection = Ball.Down
       , paddle = Paddle.normalPaddle
@@ -101,6 +111,7 @@ type Msg
 type GameControl
     = PaddleLeft
     | PaddleRight
+    | LaunchBall
 
 
 keyToGameControl : Bool -> Key -> Msg
@@ -111,6 +122,9 @@ keyToGameControl isActive key =
 
         Keyboard.Extra.ArrowRight ->
             GameInput PaddleRight isActive
+
+        Keyboard.Extra.Space ->
+            GameInput LaunchBall isActive
 
         _ ->
             NoOp
@@ -124,8 +138,8 @@ update msg model =
                 NotPlaying ->
                     ( model, Cmd.none )
 
-                Playing ->
-                    updateBallPosition2 dt model
+                Playing ballMovement ->
+                    updateBallGameDisplay dt model
 
                 Won ->
                     ( { model | ballPosition = ( -5, -5 ) }, Cmd.none )
@@ -136,11 +150,12 @@ update msg model =
         KeyboardPress keycode ->
             case keycode of
                 Keyboard.Extra.Space ->
-                    ( { model
-                        | gameState = Playing
-                      }
-                    , Cmd.none
-                    )
+                    case model.gameState of
+                        NotPlaying ->
+                            ( { model | gameState = Playing NotMoving }, Cmd.none )
+
+                        _ ->
+                            ( model, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -161,6 +176,14 @@ update msg model =
                     PaddleRight ->
                         ( { model
                             | gameControls = { gameControls | paddleRight = isActive }
+                          }
+                        , Cmd.none
+                        )
+
+                    LaunchBall ->
+                        ( { model
+                            | gameState = Playing Moving
+                            , ballVelocity = ( initialVelocity, initialVelocity )
                           }
                         , Cmd.none
                         )
@@ -187,8 +210,8 @@ type Collision
     | BottomBlockCollision Block.Block
 
 
-updateBallPosition2 : Time -> Model -> ( Model, Cmd Msg )
-updateBallPosition2 dt model =
+updateBallGameDisplay : Time -> Model -> ( Model, Cmd Msg )
+updateBallGameDisplay dt model =
     let
         ( ballPositionX, ballPositionY ) =
             model.ballPosition
@@ -260,15 +283,21 @@ handleCollision collision model =
                 )
 
             BottomWallCollision ->
-                ( { model
-                    | ballPosition = ( 60, 60 )
-                    , ballVelocity = ( initialVelocity, initialVelocity )
-                    , currentCollision = BottomWallCollision
-                    , gameSpeed = Slow
-                    , paddle = Paddle.normalPaddle
-                  }
-                , Cmd.none
-                )
+                let
+                    playerStats =
+                        model.playerStats
+                in
+                    ( { model
+                        | gameState = Playing NotMoving
+                        , playerStats = { playerStats | lives = playerStats.lives - 1 }
+                        , ballPosition = ( initialBallPosition, initialBallPosition )
+                        , ballVelocity = ( 0, 0 )
+                        , currentCollision = BottomWallCollision
+                        , gameSpeed = Slow
+                        , paddle = Paddle.normalPaddle
+                      }
+                    , Cmd.none
+                    )
 
             LeftWallCollision ->
                 ( { model
@@ -588,7 +617,7 @@ gameBoard model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.gameState of
-        Playing ->
+        Playing ballMovement ->
             Sub.batch
                 [ AnimationFrame.diffs TimeUpdate
                 , Keyboard.Extra.downs <| keyToGameControl True
