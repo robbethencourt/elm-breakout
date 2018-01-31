@@ -18,21 +18,29 @@ body {
 .game-header {
   display: flex;
   width: 100%;
+  padding-top: 10px;
+  padding-bottom: 10px;
   background-color: var(--black);
 }
 
 .score {
   width: 50%;
+  font-family: "Press Start 2P", arial;
+  font-size: 3em;
   text-align: right;
 }
 
 .lives {
   width: 25%;
+  font-family: "Press Start 2P", arial;
+  font-size: 3em;
   text-align: center;
 }
 
 .player-number {
   width: 25%;
+  font-family: "Press Start 2P", arial;
+  font-size: 3em;
   text-align: center;
 }
 

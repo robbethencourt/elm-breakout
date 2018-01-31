@@ -19,11 +19,11 @@ createBlockList fillColor value yPosition =
 
 initialBlocks : List Block
 initialBlocks =
-    createBlockList "#CB4744" 10 10
-        ++ createBlockList "#C76C3A" 8 12
-        ++ createBlockList "#B47830" 6 14
+    createBlockList "#CB4744" 7 10
+        ++ createBlockList "#C76C3A" 7 12
+        ++ createBlockList "#B47830" 4 14
         ++ createBlockList "#9FA426" 4 16
-        ++ createBlockList "#46A047" 2 18
+        ++ createBlockList "#46A047" 1 18
         ++ createBlockList "#4546C9" 1 20
 
 
