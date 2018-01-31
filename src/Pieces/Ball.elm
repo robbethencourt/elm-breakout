@@ -5,21 +5,6 @@ import Svg exposing (Svg, rect)
 import Svg.Attributes exposing (width, height, fill, x, y)
 
 
-type BallDirection
-    = Up
-    | Down
-
-
-reverseBallDirection : BallDirection -> BallDirection
-reverseBallDirection bd =
-    case bd of
-        Up ->
-            Down
-
-        Down ->
-            Up
-
-
 ball : ( Float, Float ) -> Html msg
 ball ( xPosition, yPosition ) =
     rect

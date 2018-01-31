@@ -64,6 +64,6 @@ renderPaddle xPosition paddle =
         , height "1.5"
         , fill "#C64947"
         , x (toString xPosition)
-        , y "88.5"
+        , y "75.5"
         ]
         []

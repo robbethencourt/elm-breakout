@@ -6,6 +6,7 @@
 }
 
 body {
+  height: 100%;
   margin: 0;
   color: var(--gray);
   background-color: var(--black);
@@ -13,6 +14,7 @@ body {
 
 .container {
   width: 100%;
+  background: pink;
 }
 
 .game-header {
@@ -45,13 +47,24 @@ body {
 }
 
 .game-container {
+  position: relative;
   width: 100%;
-  height: 100%;
   box-sizing: border-box;
   border-top: 35px solid var(--gray);
   border-right: 50px solid var(--gray);
   border-left: 50px solid var(--gray);
   background-color: var(--black);
+}
+
+.game-content {
+  position: absolute;
+  top: 50%;
+  width: 90%;
+  padding-left: 5%;
+  padding-right: 5%;
+  font-family: "Press Start 2P", arial;
+  font-size: 1em;
+  text-align: center;
 }
 
 .game-footer {
