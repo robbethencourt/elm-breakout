@@ -409,7 +409,7 @@ detectWallCollision ( ballPosX, ballPosY ) =
 
 detectPaddleCollision : ( Float, Float ) -> Float -> Paddle.Paddle -> Maybe Collision
 detectPaddleCollision ( ballPosX, ballPosY ) paddlePosition paddle =
-    if ballPosY > 88 && ballPosY < 89 then
+    if ballPosY >= 88 && ballPosY < 90 then
         case paddle of
             Paddle.NormalPaddle paddleSections ->
                 if ballPosX < paddlePosition || ballPosX > paddlePosition + 20 then
