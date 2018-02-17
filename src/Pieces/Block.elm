@@ -1,4 +1,4 @@
-module Pieces.Block exposing (Block, initialBlocks, rowOfSvgBlocks, getRowOfBlocks, getBlock)
+module Pieces.Block exposing (Block, initBlocks, rowOfSvgBlocks, getRowOfBlocks, getBlock)
 
 import Svg exposing (Svg, rect)
 import Svg.Attributes exposing (width, height, fill, x, y)
@@ -17,8 +17,8 @@ createBlockList fillColor value yPosition =
     List.map (Block fillColor value yPosition) (List.map ((*) 5) (List.range 0 19))
 
 
-initialBlocks : List Block
-initialBlocks =
+initBlocks : List Block
+initBlocks =
     createBlockList "#CB4744" 7 8
         ++ createBlockList "#C76C3A" 7 10
         ++ createBlockList "#B47830" 4 12

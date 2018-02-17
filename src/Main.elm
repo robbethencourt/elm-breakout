@@ -16,29 +16,27 @@ import Pieces.Ball as Ball
 
 
 type alias Model =
-    { gameState : GameState
-    , playerStats : Player
+    GameState
+
+
+type GameState
+    = NotPlaying GameModel
+    | Playing GameModel
+    | Won GameModel
+    | Lost GameModel
+
+
+type alias GameModel =
+    { player : Player
     , ballPosition : ( Float, Float )
     , ballVelocity : ( Float, Float )
     , paddle : Paddle.Paddle
-    , gameControls : GameControls
     , paddlePosition : Float
+    , gameControls : GameControls
     , currentCollision : Collision
     , gameSpeed : Speed
     , blocks : List Block.Block
     }
-
-
-type GameState
-    = NotPlaying
-    | Playing BallMovement
-    | Won
-    | Lost
-
-
-type BallMovement
-    = NotMoving
-    | Moving
 
 
 type alias Player =
@@ -48,51 +46,63 @@ type alias Player =
     }
 
 
-type Speed
-    = Slow
-    | Fast
+type BallMovement
+    = NotMoving
+    | Moving
 
 
 type alias GameControls =
     { paddleLeft : Bool
     , paddleRight : Bool
-    , launchBall : Bool
+    , ballMovement : BallMovement
     }
 
 
-initialGameControls : GameControls
-initialGameControls =
-    { paddleLeft = False
-    , paddleRight = False
-    , launchBall = False
+type Speed
+    = Slow
+    | Fast
+
+
+initGameModel : GameModel
+initGameModel =
+    { player = initPlayer
+    , ballPosition = ( 19, initBallPosition )
+    , ballVelocity = ( initVelocity, initVelocity )
+    , paddle = Paddle.normalPaddle
+    , paddlePosition = 40
+    , gameControls = initGameControls
+    , currentCollision = BottomWallCollision
+    , gameSpeed = Slow
+    , blocks = Block.initBlocks
     }
 
 
-initialVelocity : Float
-initialVelocity =
+initPlayer : Player
+initPlayer =
+    Player 0 5 1
+
+
+initBallPosition : Float
+initBallPosition =
+    73
+
+
+initVelocity : Float
+initVelocity =
     -0.04
 
 
-initialBallPosition : Float
-initialBallPosition =
-    73
+initGameControls : GameControls
+initGameControls =
+    { paddleLeft = False
+    , paddleRight = False
+    , ballMovement = NotMoving
+    }
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { gameState = NotPlaying
-      , playerStats = Player 0 5 1
-      , ballPosition = ( 19, initialBallPosition )
-      , ballVelocity = ( initialVelocity, initialVelocity )
-      , paddle = Paddle.normalPaddle
-      , gameControls = initialGameControls
-      , paddlePosition = 40
-      , currentCollision = BottomWallCollision
-      , gameSpeed = Slow
-      , blocks = Block.initialBlocks
-      }
-    , Cmd.none
-    )
+    ( NotPlaying initGameModel, Cmd.none )
 
 
 
@@ -135,79 +145,99 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         TimeUpdate dt ->
-            case model.gameState of
-                NotPlaying ->
-                    ( { model
-                        | playerStats = Player 0 5 1
-                        , ballPosition = ( 19, initialBallPosition )
-                        , ballVelocity = ( initialVelocity, initialVelocity )
-                        , paddle = Paddle.normalPaddle
-                        , gameControls = initialGameControls
-                        , paddlePosition = 40
-                        , currentCollision = BottomWallCollision
-                        , gameSpeed = Slow
-                        , blocks = Block.initialBlocks
-                      }
-                    , Cmd.none
-                    )
-
-                Playing ballMovement ->
-                    updateGameDisplay dt model
-
-                Won ->
+            case model of
+                NotPlaying _ ->
                     ( model, Cmd.none )
 
-                Lost ->
+                Playing gameModel ->
+                    updateGameDisplay dt gameModel
+
+                Won _ ->
+                    ( model, Cmd.none )
+
+                Lost _ ->
                     ( model, Cmd.none )
 
         GameInput gameControl isActive ->
-            let
-                gameControls =
-                    model.gameControls
-            in
-                case gameControl of
-                    PaddleLeft ->
-                        ( { model
-                            | gameControls = { gameControls | paddleLeft = isActive }
-                          }
-                        , Cmd.none
-                        )
+            case model of
+                NotPlaying gameState ->
+                    case gameControl of
+                        LaunchBall ->
+                            let
+                                gameControls =
+                                    gameState.gameControls
 
-                    PaddleRight ->
-                        ( { model
-                            | gameControls = { gameControls | paddleRight = isActive }
-                          }
-                        , Cmd.none
-                        )
+                                updatedGameControls =
+                                    { gameControls | ballMovement = Moving }
 
-                    LaunchBall ->
-                        case model.gameState of
-                            NotPlaying ->
-                                ( { model
-                                    | gameState = Playing Moving
-                                    , ballVelocity = ( abs initialVelocity, initialVelocity )
-                                  }
-                                , Cmd.none
-                                )
+                                updatedGameState =
+                                    { gameState | gameControls = updatedGameControls }
+                            in
+                                ( Playing updatedGameState, Cmd.none )
 
-                            Playing ballMoving ->
-                                case ballMoving of
-                                    NotMoving ->
-                                        ( { model
-                                            | gameState = Playing Moving
-                                            , ballVelocity = ( initialVelocity, initialVelocity )
-                                          }
-                                        , Cmd.none
-                                        )
+                        _ ->
+                            ( model, Cmd.none )
 
-                                    Moving ->
-                                        ( model, Cmd.none )
+                Playing gameState ->
+                    let
+                        gameControls =
+                            gameState.gameControls
+                    in
+                        case gameControl of
+                            PaddleLeft ->
+                                let
+                                    updatedGameControls =
+                                        { gameControls | paddleLeft = isActive }
 
-                            _ ->
-                                ( model, Cmd.none )
+                                    updatedGameState =
+                                        { gameState | gameControls = updatedGameControls }
+                                in
+                                    ( Playing updatedGameState, Cmd.none )
 
-                    ResetGame ->
-                        ( { model | gameState = NotPlaying }, Cmd.none )
+                            PaddleRight ->
+                                let
+                                    updatedGameControls =
+                                        { gameControls | paddleRight = isActive }
+
+                                    updatedGameState =
+                                        { gameState | gameControls = updatedGameControls }
+                                in
+                                    ( Playing updatedGameState, Cmd.none )
+
+                            LaunchBall ->
+                                let
+                                    gameControls =
+                                        gameState.gameControls
+
+                                    updatedGameControls =
+                                        { gameControls | ballMovement = Moving }
+
+                                    updatedGameState =
+                                        { gameState
+                                            | gameControls = updatedGameControls
+                                            , ballVelocity = ( initVelocity, initVelocity )
+                                        }
+                                in
+                                    ( Playing updatedGameState, Cmd.none )
+
+                            ResetGame ->
+                                ( NotPlaying initGameModel, Cmd.none )
+
+                Won gameModel ->
+                    case gameControl of
+                        ResetGame ->
+                            ( NotPlaying initGameModel, Cmd.none )
+
+                        _ ->
+                            ( model, Cmd.none )
+
+                Lost gameModel ->
+                    case gameControl of
+                        ResetGame ->
+                            ( NotPlaying initGameModel, Cmd.none )
+
+                        _ ->
+                            ( model, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -231,231 +261,206 @@ type Collision
     | BottomBlockCollision Block.Block
 
 
-updateGameDisplay : Time -> Model -> ( Model, Cmd Msg )
-updateGameDisplay dt model =
+updateGameDisplay : Time -> GameModel -> ( Model, Cmd Msg )
+updateGameDisplay dt gameModel =
     let
         ( ballPositionX, ballPositionY ) =
-            model.ballPosition
+            gameModel.ballPosition
 
         ( ballVelocityX, ballVelocityY ) =
-            model.ballVelocity
+            gameModel.ballVelocity
 
         playerStats =
-            model.playerStats
+            gameModel.player
     in
         if playerStats.score == 480 then
-            ( { model | gameState = Won }, Cmd.none )
+            ( Won gameModel, Cmd.none )
+        else if playerStats.lives == 0 then
+            ( Lost gameModel, Cmd.none )
         else if ballPositionY < 73 && ballPositionY > 22 && ballPositionX > 0 && ballPositionX < 100 then
-            ( { model
-                | ballPosition =
-                    ( ballPositionX + ballVelocityX * dt
-                    , ballPositionY + ballVelocityY * dt
-                    )
-                , paddlePosition = updatePaddlePosition model.gameControls model.paddlePosition model.paddle
-              }
+            ( Playing
+                { gameModel
+                    | ballPosition =
+                        ( ballPositionX + ballVelocityX * dt
+                        , ballPositionY + ballVelocityY * dt
+                        )
+                    , paddlePosition = updatePaddlePosition gameModel.gameControls gameModel.paddlePosition gameModel.paddle
+                }
             , Cmd.none
             )
         else
             let
                 maybeCollision =
-                    collectCollisions dt model
+                    collectCollisions dt gameModel
             in
                 case maybeCollision of
                     Nothing ->
-                        ( { model
-                            | ballPosition =
-                                ( ballPositionX + ballVelocityX * dt
-                                , ballPositionY + ballVelocityY * dt
-                                )
-                            , paddlePosition = updatePaddlePosition model.gameControls model.paddlePosition model.paddle
-                          }
+                        ( Playing
+                            { gameModel
+                                | ballPosition =
+                                    ( ballPositionX + ballVelocityX * dt
+                                    , ballPositionY + ballVelocityY * dt
+                                    )
+                                , paddlePosition = updatePaddlePosition gameModel.gameControls gameModel.paddlePosition gameModel.paddle
+                            }
                         , Cmd.none
                         )
 
                     Just collision ->
                         let
-                            modelWithUpdatedGameControls =
-                                { model | paddlePosition = updatePaddlePosition model.gameControls model.paddlePosition model.paddle }
+                            gameModelWithUpdatedGameControls =
+                                { gameModel | paddlePosition = updatePaddlePosition gameModel.gameControls gameModel.paddlePosition gameModel.paddle }
                         in
-                            handleCollision collision modelWithUpdatedGameControls
+                            ( Playing <| handleCollision collision gameModelWithUpdatedGameControls, Cmd.none )
 
 
-handleCollision : Collision -> Model -> ( Model, Cmd Msg )
-handleCollision collision model =
+handleCollision : Collision -> GameModel -> GameModel
+handleCollision collision gameModel =
     let
         ( ballX, ballY ) =
-            model.ballPosition
+            gameModel.ballPosition
 
         ( ballVelocityX, ballVelocityY ) =
-            model.ballVelocity
+            gameModel.ballVelocity
     in
         case collision of
             TopWallCollision ->
-                ( { model
+                { gameModel
                     | ballPosition = ( ballX, 0.1 )
                     , ballVelocity = ( ballVelocityX, abs ballVelocityY )
                     , currentCollision = TopWallCollision
-                  }
-                , Cmd.none
-                )
+                }
 
             RightWallCollision ->
-                ( { model
+                { gameModel
                     | ballPosition = ( 99.9, ballY )
                     , ballVelocity = ( -1 * abs ballVelocityX, ballVelocityY )
                     , currentCollision = RightWallCollision
-                  }
-                , Cmd.none
-                )
+                }
 
             BottomWallCollision ->
                 let
-                    playerStats =
-                        model.playerStats
+                    player =
+                        gameModel.player
 
                     updatedLives =
-                        if playerStats.lives == 0 then
+                        if player.lives == 0 then
                             0
                         else
-                            playerStats.lives - 1
-
-                    updatedGameState =
-                        if playerStats.lives == 0 then
-                            Lost
-                        else
-                            Playing NotMoving
+                            player.lives - 1
                 in
-                    ( { model
-                        | gameState = updatedGameState
-                        , playerStats = { playerStats | lives = updatedLives }
-                        , ballPosition = ( initialBallPosition - toFloat (7 * updatedLives), initialBallPosition )
+                    { gameModel
+                        | player = { player | lives = updatedLives }
+                        , ballPosition = ( initBallPosition - toFloat (7 * updatedLives), initBallPosition )
                         , ballVelocity = ( 0, 0 )
                         , currentCollision = BottomWallCollision
                         , gameSpeed = Slow
                         , paddle = Paddle.normalPaddle
-                      }
-                    , Cmd.none
-                    )
+                    }
 
             LeftWallCollision ->
-                ( { model
+                { gameModel
                     | ballPosition = ( 0.1, ballY )
                     , ballVelocity = ( abs ballVelocityX, ballVelocityY )
                     , currentCollision = LeftWallCollision
-                  }
-                , Cmd.none
-                )
+                }
 
             LeftPaddleCollision ->
-                ( { model
+                { gameModel
                     | ballPosition = ( ballX, 74.9 )
                     , ballVelocity = ( -1 * abs ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = LeftPaddleCollision
-                  }
-                , Cmd.none
-                )
+                }
 
             LeftMiddlePaddleCollision ->
-                ( { model
+                { gameModel
                     | ballPosition = ( ballX, 74.9 )
                     , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = LeftMiddlePaddleCollision
-                  }
-                , Cmd.none
-                )
+                }
 
             MiddlePaddleCollision ->
-                ( { model
+                { gameModel
                     | ballPosition = ( ballX, 74.9 )
                     , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = MiddlePaddleCollision
-                  }
-                , Cmd.none
-                )
+                }
 
             RightMiddlePaddleCollision ->
-                ( { model
+                { gameModel
                     | ballPosition = ( ballX, 74.9 )
                     , ballVelocity = ( ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = RightMiddlePaddleCollision
-                  }
-                , Cmd.none
-                )
+                }
 
             RightPaddleCollision ->
-                ( { model
+                { gameModel
                     | ballPosition = ( ballX, 74.9 )
                     , ballVelocity = ( abs ballVelocityX, -1 * abs ballVelocityY )
                     , currentCollision = RightPaddleCollision
-                  }
-                , Cmd.none
-                )
+                }
 
             TopBlockCollision block ->
                 let
                     ( updatedBallVelocityX, updatedBallVelocityY, updatedGameSpeed, updatedPaddle ) =
-                        if block.yPosition < 14 && model.gameSpeed == Slow then
+                        if block.yPosition < 14 && gameModel.gameSpeed == Slow then
                             ( ballVelocityX * 1.85, ballVelocityY * 1.85, Fast, Paddle.shortPaddle )
                         else
-                            ( ballVelocityX, ballVelocityY, model.gameSpeed, model.paddle )
+                            ( ballVelocityX, ballVelocityY, gameModel.gameSpeed, gameModel.paddle )
 
-                    playerStats =
-                        model.playerStats
+                    player =
+                        gameModel.player
                 in
-                    ( { model
-                        | playerStats = { playerStats | score = playerStats.score + block.value }
+                    { gameModel
+                        | player = { player | score = player.score + block.value }
                         , ballPosition = ( ballX, (toFloat block.yPosition) - 2 )
                         , ballVelocity = ( updatedBallVelocityX, -1 * abs updatedBallVelocityY )
-                        , blocks = List.filter (\b -> b /= block) model.blocks
+                        , blocks = List.filter (\b -> b /= block) gameModel.blocks
                         , currentCollision = TopBlockCollision block
                         , gameSpeed = updatedGameSpeed
                         , paddle = updatedPaddle
-                      }
-                    , Cmd.none
-                    )
+                    }
 
             BottomBlockCollision block ->
                 let
                     ( updatedBallVelocityX, updatedBallVelocityY, updatedGameSpeed, updatedPaddle ) =
-                        if block.yPosition < 14 && model.gameSpeed == Slow then
+                        if block.yPosition < 14 && gameModel.gameSpeed == Slow then
                             ( ballVelocityX * 1.85, ballVelocityY * 1.85, Fast, Paddle.shortPaddle )
                         else
-                            ( ballVelocityX, ballVelocityY, model.gameSpeed, model.paddle )
+                            ( ballVelocityX, ballVelocityY, gameModel.gameSpeed, gameModel.paddle )
 
-                    playerStats =
-                        model.playerStats
+                    player =
+                        gameModel.player
                 in
-                    ( { model
-                        | playerStats = { playerStats | score = playerStats.score + block.value }
+                    { gameModel
+                        | player = { player | score = player.score + block.value }
                         , ballPosition = ( ballX, (toFloat block.yPosition) + 2 )
                         , ballVelocity = ( updatedBallVelocityX, abs updatedBallVelocityY )
-                        , blocks = List.filter (\b -> b /= block) model.blocks
+                        , blocks = List.filter (\b -> b /= block) gameModel.blocks
                         , currentCollision = BottomBlockCollision block
                         , gameSpeed = updatedGameSpeed
                         , paddle = updatedPaddle
-                      }
-                    , Cmd.none
-                    )
+                    }
 
 
-collectCollisions : Time -> Model -> Maybe Collision
-collectCollisions dt model =
-    detectCollisions dt model
+collectCollisions : Time -> GameModel -> Maybe Collision
+collectCollisions dt gameModel =
+    detectCollisions dt gameModel
         |> List.filterMap identity
         |> List.head
 
 
-detectCollisions : Time -> Model -> List (Maybe Collision)
-detectCollisions dt model =
+detectCollisions : Time -> GameModel -> List (Maybe Collision)
+detectCollisions dt gameModel =
     let
         wallCollision =
-            detectWallCollision model.ballPosition
+            detectWallCollision gameModel.ballPosition
 
         paddleCollision =
-            detectPaddleCollision model.ballPosition model.paddlePosition model.paddle
+            detectPaddleCollision gameModel.ballPosition gameModel.paddlePosition gameModel.paddle
 
         blockCollision =
-            detectBlockCollision model.currentCollision model.ballPosition model.ballVelocity model.blocks
+            detectBlockCollision gameModel.currentCollision gameModel.ballPosition gameModel.ballVelocity gameModel.blocks
     in
         [ wallCollision, paddleCollision, blockCollision ]
 
@@ -608,24 +613,24 @@ updatePaddlePosition gameControls paddlePosition paddle =
 view : Model -> Html Msg
 view model =
     div [ class "container" ]
-        [ gameHeader model.playerStats
+        [ gameHeader model
         , div [ class "game-container" ]
             [ gameBoard model
-            , case model.gameState of
-                NotPlaying ->
+            , case model of
+                NotPlaying gameState ->
                     div [ class "game-content" ]
                         [ p [] [ text "Press enter to reset game, spacebar to launch ball, left and right arrows to move paddle." ]
                         , p [] [ text "Have Fun!" ]
                         ]
 
-                Playing ballMovement ->
+                Playing gameState ->
                     div [] []
 
-                Won ->
+                Won gameState ->
                     div [ class "game-content" ]
                         [ p [] [ text "Congratulations" ] ]
 
-                Lost ->
+                Lost gameState ->
                     div [ class "game-content" ]
                         [ p [] [ text "Try Again. Press Enter to reset game!" ] ]
             ]
@@ -633,8 +638,24 @@ view model =
         ]
 
 
-gameHeader : Player -> Html Msg
-gameHeader { score, lives, playerNumber } =
+gameHeader : Model -> Html Msg
+gameHeader model =
+    case model of
+        NotPlaying gameModel ->
+            displayScore gameModel.player
+
+        Playing gameModel ->
+            displayScore gameModel.player
+
+        Won gameModel ->
+            displayScore gameModel.player
+
+        Lost gameModel ->
+            displayScore gameModel.player
+
+
+displayScore : Player -> Html Msg
+displayScore { score, lives, playerNumber } =
     div [ class "game-header" ]
         [ div [ class "score" ] [ text (toString score) ]
         , div [ class "lives" ] [ text (toString lives) ]
@@ -644,15 +665,31 @@ gameHeader { score, lives, playerNumber } =
 
 gameBoard : Model -> Html Msg
 gameBoard model =
+    case model of
+        NotPlaying gameModel ->
+            displayGameBoard gameModel
+
+        Playing gameModel ->
+            displayGameBoard gameModel
+
+        Won gameModel ->
+            displayGameBoard gameModel
+
+        Lost gameModel ->
+            displayGameBoard gameModel
+
+
+displayGameBoard : GameModel -> Html Msg
+displayGameBoard gameModel =
     Svg.svg
         [ width "100%"
         , height "100%"
         , viewBox "0 0 100 77"
         , fill "#000000"
         ]
-        ((Block.rowOfSvgBlocks model.blocks)
-            ++ [ Ball.ball model.ballPosition ]
-            ++ [ Paddle.renderPaddle model.paddlePosition model.paddle ]
+        ((Block.rowOfSvgBlocks gameModel.blocks)
+            ++ [ Ball.ball gameModel.ballPosition ]
+            ++ [ Paddle.renderPaddle gameModel.paddlePosition gameModel.paddle ]
         )
 
 
