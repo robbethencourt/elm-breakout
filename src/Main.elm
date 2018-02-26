@@ -208,17 +208,21 @@ update msg model =
                                 let
                                     gameControls =
                                         gameState.gameControls
-
-                                    updatedGameControls =
-                                        { gameControls | ballMovement = Moving }
-
-                                    updatedGameState =
-                                        { gameState
-                                            | gameControls = updatedGameControls
-                                            , ballVelocity = ( initVelocity, initVelocity )
-                                        }
                                 in
-                                    ( Playing updatedGameState, Cmd.none )
+                                    if gameControls.ballMovement == Moving then
+                                        ( model, Cmd.none )
+                                    else
+                                        let
+                                            updatedGameControls =
+                                                { gameControls | ballMovement = Moving }
+
+                                            updatedGameState =
+                                                { gameState
+                                                    | gameControls = updatedGameControls
+                                                    , ballVelocity = ( initVelocity, initVelocity )
+                                                }
+                                        in
+                                            ( Playing updatedGameState, Cmd.none )
 
                             ResetGame ->
                                 ( NotPlaying initGameModel, Cmd.none )
@@ -343,6 +347,9 @@ handleCollision collision gameModel =
                     player =
                         gameModel.player
 
+                    gameControls =
+                        gameModel.gameControls
+
                     updatedLives =
                         if player.lives == 0 then
                             0
@@ -353,6 +360,7 @@ handleCollision collision gameModel =
                         | player = { player | lives = updatedLives }
                         , ballPosition = ( initBallPosition - toFloat (7 * updatedLives), initBallPosition )
                         , ballVelocity = ( 0, 0 )
+                        , gameControls = { gameControls | ballMovement = NotMoving }
                         , currentCollision = BottomWallCollision
                         , gameSpeed = Slow
                         , paddle = Paddle.normalPaddle
