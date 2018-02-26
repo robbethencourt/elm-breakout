@@ -1,8 +1,8 @@
 :root {
-  --gray: #8E8E8E;
+  --gray: #8e8e8e;
   --black: #000000;
-  --border-green: #61C299;
-  --block-red: #C64947;
+  --border-green: #61c299;
+  --block-red: #c64947;
 }
 
 body {
@@ -13,8 +13,9 @@ body {
 }
 
 .container {
-  width: 100%;
-  background: pink;
+  width: 100vmin;
+  max-width: 100vw;
+  margin: 0 auto;
 }
 
 .game-header {
@@ -74,11 +75,4 @@ body {
   border-right: 50px solid var(--block-red);
   border-left: 50px solid var(--border-green);
   background-color: var(--black);
-}
-
-@media (min-width: 1000px) {
-  .container {
-    width: 1000px;
-    margin: 0 auto;
-  }
 }
